@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 380" ><style>
+    .stroke    { stroke: #2347d9; fill: none; stroke-width: 1.2; }
+    .stroke-2  { stroke: #2347d9; fill: none; stroke-width: 1.8; }
+    .stroke-soft { stroke: #93a8f0; fill: none; stroke-width: 1; }
+    .fill      { fill: #2347d9; }
+    .fill-soft { fill: #eef2ff; }
+    .fill-orange { fill: #f6802b; }
+    .fill-green  { fill: #2f8f5b; }
+    .lead      { stroke: #2347d9; fill: none; stroke-width: 0.8; }
+    .dashed    { stroke: #2347d9; fill: none; stroke-width: 0.8; stroke-dasharray: 3 3; }
+    .grid      { stroke: #d8e0f5; fill: none; stroke-width: 0.5; }
+    .lbl       { font-family: "JetBrains Mono", "SF Mono", Menlo, monospace; font-size: 9.5px; fill: #2347d9; letter-spacing: 0.06em; text-transform: uppercase; }
+    .lbl-soft  { font-family: "JetBrains Mono", "SF Mono", Menlo, monospace; font-size: 9px; fill: #9ca3af; letter-spacing: 0.06em; text-transform: uppercase; }
+    .lbl-big   { font-family: "JetBrains Mono", "SF Mono", Menlo, monospace; font-size: 11px; fill: #2347d9; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600; }
+    .body      { font-family: "Iowan Old Style", Palatino, Georgia, serif; font-size: 11px; fill: #1f2937; }
+    </style><rect width="100%" height="100%" fill="#fffdf6"/>
+        <defs>
+          <marker id="f36-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 Z" class="fill"/>
+          </marker>
+          <symbol id="f36-tree" viewBox="0 0 150 150">
+            <ellipse cx="72" cy="34" rx="34" ry="24" stroke="#2347d9" fill="#2f8f5b" stroke-width="1.2" opacity="0.18"/>
+            <ellipse cx="105" cy="48" rx="34" ry="26" stroke="#2347d9" fill="#2f8f5b" stroke-width="1.2" opacity="0.2"/>
+            <ellipse cx="122" cy="82" rx="30" ry="28" stroke="#2347d9" fill="#2f8f5b" stroke-width="1.2" opacity="0.18"/>
+            <ellipse cx="98" cy="112" rx="36" ry="26" stroke="#2347d9" fill="#2f8f5b" stroke-width="1.2" opacity="0.2"/>
+            <ellipse cx="58" cy="116" rx="34" ry="24" stroke="#2347d9" fill="#2f8f5b" stroke-width="1.2" opacity="0.18"/>
+            <ellipse cx="28" cy="88" rx="32" ry="28" stroke="#2347d9" fill="#2f8f5b" stroke-width="1.2" opacity="0.2"/>
+            <ellipse cx="36" cy="50" rx="30" ry="24" stroke="#2347d9" fill="#2f8f5b" stroke-width="1.2" opacity="0.18"/>
+            <circle cx="76" cy="76" r="16" stroke="#2347d9" fill="#fffdf6" stroke-width="1.1"/>
+            <circle cx="76" cy="76" r="5" fill="#2347d9"/>
+          </symbol>
+        </defs>
+        <text x="24" y="28" class="lbl-big">EMERGENT EXPLORATION · TOP-DOWN TRAJECTORIES</text>
+        <line x1="24" y1="42" x2="896" y2="42" class="stroke-soft"/>
+        <line x1="310" y1="70" x2="310" y2="322" class="grid"/>
+        <line x1="604" y1="70" x2="604" y2="322" class="grid"/>
+
+        <g transform="translate(38,74)">
+          <text x="128" y="0" class="lbl" text-anchor="middle">A · HEAD-ON</text>
+          <text x="128" y="16" class="lbl-soft" text-anchor="middle">ORANGE VISIBLE</text>
+          <use href="#f36-tree" x="102" y="66" width="150" height="150"/>
+          <circle cx="180" cy="142" r="7" fill="#f6802b" stroke="#c75d18" stroke-width="1.1"/>
+          <path d="M 40 142 C 78 140 124 142 174 142" stroke="#2347d9" fill="none" stroke-width="1.6" stroke-dasharray="4 3" marker-end="url(#f36-arr)"/>
+          <circle cx="34" cy="142" r="4" class="fill"/>
+          <text x="34" y="164" class="lbl-soft" text-anchor="middle">x₀</text>
+          <text x="130" y="250" class="lbl-soft" text-anchor="middle">DIRECT COMMIT</text>
+        </g>
+
+        <g transform="translate(332,74)">
+          <text x="128" y="0" class="lbl" text-anchor="middle">B · SIDE-ON</text>
+          <text x="128" y="16" class="lbl-soft" text-anchor="middle">FRUIT INITIALLY HIDDEN</text>
+          <use href="#f36-tree" x="102" y="66" width="150" height="150"/>
+          <circle cx="196" cy="112" r="7" fill="#f6802b" stroke="#c75d18" stroke-width="1.1"/>
+          <circle cx="36" cy="84" r="4" class="fill"/>
+          <text x="36" y="106" class="lbl-soft" text-anchor="middle">x₀</text>
+          <path d="M 42 84 C 96 42 178 50 224 92 C 248 116 242 154 202 162 C 178 166 158 156 148 144" stroke="#2347d9" fill="none" stroke-width="1.6" stroke-dasharray="4 3" marker-end="url(#f36-arr)"/>
+          <text x="134" y="250" class="lbl-soft" text-anchor="middle">SEARCH ARC THEN COMMIT</text>
+        </g>
+
+        <g transform="translate(626,74)">
+          <text x="128" y="0" class="lbl" text-anchor="middle">C · NO ORANGE</text>
+          <text x="128" y="16" class="lbl-soft" text-anchor="middle">POLICY CIRCLES THE TREE</text>
+          <use href="#f36-tree" x="102" y="66" width="150" height="150"/>
+          <circle cx="178" cy="142" r="10" fill="#fffdf6" stroke="#c64545" stroke-width="1.2" stroke-dasharray="2 2"/>
+          <line x1="172" y1="136" x2="184" y2="148" stroke="#c64545" stroke-width="1.2"/>
+          <line x1="184" y1="136" x2="172" y2="148" stroke="#c64545" stroke-width="1.2"/>
+          <circle cx="34" cy="84" r="4" class="fill"/>
+          <text x="34" y="106" class="lbl-soft" text-anchor="middle">x₀</text>
+          <path d="M 42 84 C 94 40 184 40 228 92 C 266 138 236 202 168 214 C 90 228 34 182 54 126 C 70 80 130 70 184 92" stroke="#2347d9" fill="none" stroke-width="1.6" stroke-dasharray="4 3" marker-end="url(#f36-arr)"/>
+          <text x="134" y="250" class="lbl-soft" text-anchor="middle">LOOPS AROUND CANOPY</text>
+        </g>
+        <text x="24" y="356" class="lbl-soft">FIG. 3.6 · EMERGENT EXPLORATION · AFTER THESIS FIG. 3.4</text>
+      </svg>

@@ -1,0 +1,759 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>3 · Learning to plan — A visual reading of Kothiyal 2021</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<div class="linkbar">
+  <div class="group">
+    <span class="lbl-tag">Source</span>
+    <a href="https://jscholarship.library.jhu.edu/items/3b69ca6c-e302-4ad5-bf1e-c833dee928bd" target="_blank" rel="noopener">Paper · JScholarship<span class="arrow">↗</span></a>
+    <a href="https://www.linkedin.com/in/siddharth-kothiyal/" target="_blank" rel="noopener">Author · Siddharth Kothiyal<span class="arrow">↗</span></a>
+  </div>
+  <div class="group">
+    <span class="lbl-tag">Built by</span>
+    <a href="https://github.com/0xadvait" target="_blank" rel="noopener">GitHub · @0xadvait<span class="arrow">↗</span></a>
+    <a href="https://x.com/advait_jayant" target="_blank" rel="noopener">X · @advait_jayant<span class="arrow">↗</span></a>
+  </div>
+</div>
+
+<header class="topbar">
+  <div class="brand">A visual reading of <em>Perception Based UAV Path Planning for Fruit Harvesting</em></div>
+  <div class="crumbs">
+    <a href="index.html">Cover</a> ·
+    <a href="chapter-1.html">1 · The problem</a> ·
+    <a href="chapter-2.html">2 · Decoupled</a> ·
+    <a href="chapter-3.html" class="current">3 · Learning to plan</a> ·
+    <a href="chapter-4.html">4 · What worked</a> ·
+    <a href="terminology.html">Terminology</a>
+  </div>
+</header>
+
+<main class="shell">
+
+  <aside class="toc">
+    <h3>Chapter 3</h3>
+    <ol style="counter-reset: none;">
+      <li style="counter-increment: none;"><a href="#why">Why end-to-end</a></li>
+      <li style="counter-increment: none;"><a href="#pipeline">The closed loop</a></li>
+      <li style="counter-increment: none;"><a href="#architecture">The network</a></li>
+      <li style="counter-increment: none;"><a href="#bins">Action as classification</a></li>
+      <li style="counter-increment: none;"><a href="#expert">The MPC teacher</a></li>
+      <li style="counter-increment: none;"><a href="#dagger">DAgger</a></li>
+      <li style="counter-increment: none;"><a href="#emergent">Emergent exploration</a></li>
+      <li style="counter-increment: none;"><a href="#real">Sim → real</a></li>
+    </ol>
+    <h3 style="margin-top:24px;">Other chapters</h3>
+    <ol>
+      <li><a href="chapter-1.html">The problem</a></li>
+      <li><a href="chapter-2.html">Decoupled pipeline</a></li>
+      <li><a href="chapter-3.html">Learning to plan</a></li>
+      <li><a href="chapter-4.html">What worked</a></li>
+    </ol>
+    <h3 style="margin-top:24px;"><a href="terminology.html" style="color:var(--blue);">Terminology →</a></h3>
+  </aside>
+
+  <article class="content">
+
+    <h1><span class="num">CHAPTER 3</span>Learning to plan</h1>
+    <p class="deck">
+      Replace the brittle geometric handoff with a network that predicts short-horizon motion from pixels. Keep the old segmenter as attention. Train the rest by imitating a privileged optimal-control teacher.
+    </p>
+
+    <!-- ============ §3.1 WHY ============ -->
+    <h2 id="why"><span class="num">§3.1</span>Why end-to-end</h2>
+
+    <p>
+      Chapter 2's pipeline has a clean failure: it only knows what the segmenter sees in the current frame. If the orange is hidden behind leaves or behind the tree at the start, the system has no target point, no fitted foliage plane, and no goal pose to hand to the planner.
+    </p>
+
+    <p>
+      Chapter 3 keeps the useful visual prior — "this white blob is the orange mask" — but removes the hand-built geometry between perception and planning. The network sees an RGB image plus the mask and predicts three future 6-DOF pose increments. The hope is that it learns the latent visual structure Chapter 2 never represented: where fruit tends to sit in the canopy, which side of the tree is likely clear, and when a search arc is better than a direct approach.
+    </p>
+
+    <div class="callout">
+      <span class="tag">Two ways to teach a robot</span>
+      <p>
+        <strong>Reinforcement learning</strong> would let the drone try things and learn from reward, but real crashes are expensive and the sample efficiency is poor. <strong>Imitation learning</strong> is more practical here: generate expert trajectories, then train the network to mimic them. The catch is that the expert must be good. In simulation, the expert is DDP with full knowledge of the tree, orange, and drone state.
+      </p>
+    </div>
+
+    <!-- ============ §3.2 PIPELINE ============ -->
+    <h2 id="pipeline"><span class="num">§3.2</span>The closed loop</h2>
+
+    <figure>
+      <svg class="diag" viewBox="0 0 880 470" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="f31-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 Z" class="fill"/>
+          </marker>
+        </defs>
+        <text x="24" y="28" class="lbl-big">END-TO-END PLANNING LOOP</text>
+        <text x="24" y="44" class="lbl-soft">RESNET8 TAKES TWO INPUTS — RGB DIRECTLY, AND THE U-NET MASK ALONGSIDE IT</text>
+        <line x1="24" y1="58" x2="856" y2="58" class="stroke-soft"/>
+
+        <!-- ============== CAMERA ============== -->
+        <g transform="translate(36,100)">
+          <rect x="0" y="0" width="120" height="64" class="stroke fill-soft" rx="3"/>
+          <text x="60" y="22" class="lbl" text-anchor="middle">CAMERA</text>
+          <text x="60" y="38" class="lbl-soft" text-anchor="middle">RGB IMAGE</text>
+          <rect x="28" y="48" width="62" height="10" class="stroke" fill="#fffdf6"/>
+          <circle cx="47" cy="53" r="3.5" fill="#f6802b"/>
+        </g>
+
+        <!-- branch junction (small dot) just to the right of CAMERA, vertically centred -->
+        <line x1="156" y1="132" x2="180" y2="132" class="stroke"/>
+        <circle cx="180" cy="132" r="3.5" class="fill"/>
+
+        <!-- ============== RGB BYPASS — straight to ResNet8 ============== -->
+        <line x1="180" y1="132" x2="394" y2="132" class="stroke" marker-end="url(#f31-arr)"/>
+        <text x="282" y="124" class="lbl-soft" text-anchor="middle">RGB · 3 CH</text>
+
+        <!-- ============== U-NET DETOUR — branches DOWN, makes mask, comes back UP ============== -->
+        <path d="M 180 132 L 180 218" class="stroke" fill="none" marker-end="url(#f31-arr)"/>
+        <g transform="translate(118,222)">
+          <rect x="0" y="0" width="160" height="56" class="stroke fill-soft" rx="3"/>
+          <text x="80" y="22" class="lbl" text-anchor="middle">U-NET</text>
+          <text x="80" y="38" class="lbl-soft" text-anchor="middle">RGB → BINARY MASK</text>
+          <rect x="52" y="44" width="56" height="8" fill="#1f2937" stroke="#2347d9" stroke-width="0.7"/>
+          <circle cx="80" cy="48" r="3.2" fill="#fffdf6"/>
+        </g>
+        <!-- up-and-over arm: U-Net right edge → ResNet8 left edge, joining BELOW the bypass -->
+        <path d="M 278 250 C 340 250 360 138 410 138" class="stroke" fill="none" marker-end="url(#f31-arr)"/>
+        <text x="346" y="206" class="lbl-soft" text-anchor="middle">MASK · 1 CH</text>
+
+        <!-- ============== CONCATENATION marker ============== -->
+        <g transform="translate(404,118)">
+          <rect x="-6" y="-4" width="12" height="36" stroke="#2347d9" fill="#fffdf6" stroke-width="1.2"/>
+          <text x="0" y="46" class="lbl-soft" text-anchor="middle">CONCAT 4 CH</text>
+        </g>
+
+        <!-- ============== RESNET8 ============== -->
+        <g transform="translate(412,100)">
+          <rect x="0" y="0" width="220" height="64" stroke="#2347d9" fill="#eef2ff" stroke-width="1.6" rx="3"/>
+          <text x="110" y="22" class="lbl-big" text-anchor="middle">RESNET8 PREDICTOR</text>
+          <text x="110" y="38" class="lbl-soft" text-anchor="middle">4 CH IN — 3 POSE DELTAS OUT</text>
+          <circle cx="60" cy="54" r="3" fill="#5b7cf5"/>
+          <circle cx="110" cy="50" r="3" fill="#5b7cf5"/>
+          <circle cx="160" cy="46" r="3" fill="#5b7cf5"/>
+        </g>
+
+        <line x1="632" y1="132" x2="668" y2="132" class="stroke" marker-end="url(#f31-arr)"/>
+
+        <!-- ============== DDP ============== -->
+        <g transform="translate(670,100)">
+          <rect x="0" y="0" width="150" height="64" class="stroke fill-soft" rx="3"/>
+          <text x="75" y="22" class="lbl" text-anchor="middle">DDP SMOOTHER</text>
+          <text x="75" y="38" class="lbl-soft" text-anchor="middle">FEASIBLE x*(t)</text>
+          <path d="M 30 54 C 58 42 100 42 136 52" class="dashed"/>
+        </g>
+        <line x1="745" y1="164" x2="745" y2="216" class="stroke" marker-end="url(#f31-arr)"/>
+
+        <!-- ============== PD ============== -->
+        <g transform="translate(670,218)">
+          <rect x="0" y="0" width="150" height="56" class="stroke fill-soft" rx="3"/>
+          <text x="75" y="22" class="lbl" text-anchor="middle">PD TRACKER</text>
+          <text x="75" y="38" class="lbl-soft" text-anchor="middle">DJI AUTOPILOT</text>
+        </g>
+
+        <!-- ============== Closed-loop arrow back to camera (routed OVER THE TOP, away from the network-output panel below) ============== -->
+        <path d="M 820 246 Q 852 246 852 226 L 852 96 Q 852 76 832 76 L 116 76 Q 96 76 96 96 L 96 100" class="dashed" fill="none" marker-end="url(#f31-arr)"/>
+        <text x="420" y="70" class="lbl-soft" text-anchor="middle">CLOSED LOOP — NEW CAMERA FRAME RESTARTS THE 1.5 S PLAN</text>
+
+        <!-- ============== Network output mini-chart (right side, below DDP/PD) ============== -->
+        <g transform="translate(380,328)">
+          <text x="0" y="0" class="lbl-big">NETWORK OUTPUT</text>
+          <line x1="0" y1="10" x2="430" y2="10" class="stroke-soft"/>
+          <rect x="14" y="52" width="36" height="18" class="stroke fill-soft" rx="2"/>
+          <text x="32" y="86" class="lbl-soft" text-anchor="middle">x₀</text>
+          <circle cx="120" cy="44" r="5" fill="#5b7cf5"/>
+          <text x="120" y="32" class="lbl" text-anchor="middle">Δḡ₁</text>
+          <text x="120" y="74" class="lbl-soft" text-anchor="middle">+0.5 S</text>
+          <circle cx="232" cy="32" r="5" fill="#5b7cf5"/>
+          <text x="232" y="20" class="lbl" text-anchor="middle">Δḡ₂</text>
+          <text x="232" y="62" class="lbl-soft" text-anchor="middle">+1.0 S</text>
+          <circle cx="346" cy="22" r="5" fill="#5b7cf5"/>
+          <text x="346" y="44" class="lbl" text-anchor="middle">Δḡ₃</text>
+          <text x="346" y="60" class="lbl-soft" text-anchor="middle">+1.5 S</text>
+          <path d="M 50 60 C 76 50 96 46 116 44" class="dashed"/>
+          <path d="M 124 44 C 168 36 196 33 228 32" class="dashed"/>
+          <path d="M 236 32 C 282 26 312 23 342 22" class="dashed"/>
+          <text x="0" y="116" class="lbl-soft">3 WAYPOINTS × 6 DOF × 100 BINS = 1800 LOGITS</text>
+        </g>
+
+        <text x="24" y="455" class="lbl-soft">FIG. 3.1 · END-TO-END PIPELINE · §3.2</text>
+      </svg>
+      <figcaption>
+        <span class="figno">FIG. 3.1</span> The camera output forks. The mask branch goes through U-Net; the raw RGB goes straight ahead. They are concatenated into a 4-channel tensor that the ResNet8 predictor consumes — depth is <em>not</em> a direct input here (it was the chapter-2 projection tool). The predictor emits three pose increments, DDP turns them into a feasible reference trajectory, and the autopilot tracks it until the next image arrives.
+      </figcaption>
+    </figure>
+
+    <p>
+      <!-- Codex improvement: make the lineage from Chapter 2 explicit. -->
+      This is not a full rewrite of the stack. The orange segmenter survives from Chapter 2 and becomes an attention channel. What disappears is the hand-engineered middle: no pinhole projection to a mean orange point, no RANSAC plane, no single goal pose contract.
+    </p>
+
+    <!-- ============ §3.3 ARCHITECTURE ============ -->
+    <h2 id="architecture"><span class="num">§3.3</span>The network</h2>
+
+    <p>
+      The predictor is a small ResNet8, following Kaufmann et al.'s drone-racing architecture. It is deliberately small: one 32-channel convolution, two residual blocks, two fully connected layers, and an 1800-logit classification head.
+    </p>
+
+    <figure>
+      <svg class="diag" viewBox="0 0 860 300" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="f32-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 Z" class="fill"/>
+          </marker>
+        </defs>
+        <text x="24" y="28" class="lbl-big">RESNET8 WAYPOINT PREDICTOR</text>
+        <line x1="24" y1="42" x2="836" y2="42" class="stroke-soft"/>
+        <g transform="translate(34,104)">
+          <rect x="0" y="0" width="64" height="78" class="stroke fill-soft"/>
+          <rect x="8" y="8" width="64" height="78" class="stroke" fill="#fffdf6" opacity="0.75"/>
+          <text x="36" y="114" class="lbl" text-anchor="middle">RGB + MASK</text>
+          <text x="36" y="128" class="lbl-soft" text-anchor="middle">4 CHANNELS</text>
+          <line x1="80" y1="40" x2="112" y2="40" class="stroke" marker-end="url(#f32-arr)"/>
+          <rect x="114" y="10" width="54" height="58" class="stroke fill-soft"/>
+          <text x="141" y="92" class="lbl-soft" text-anchor="middle">32 CONV</text>
+          <line x1="168" y1="40" x2="202" y2="40" class="stroke" marker-end="url(#f32-arr)"/>
+          <rect x="204" y="0" width="116" height="78" stroke="#2347d9" fill="#eef2ff" stroke-width="1.4"/>
+          <text x="262" y="30" class="lbl" text-anchor="middle">RESBLOCK</text>
+          <text x="262" y="48" class="lbl-soft" text-anchor="middle">48 CH</text>
+          <text x="262" y="94" class="lbl-soft" text-anchor="middle">C(R(C(R(x)))) + C(x)</text>
+          <line x1="320" y1="40" x2="354" y2="40" class="stroke" marker-end="url(#f32-arr)"/>
+          <rect x="356" y="0" width="116" height="78" stroke="#2347d9" fill="#eef2ff" stroke-width="1.4"/>
+          <text x="414" y="30" class="lbl" text-anchor="middle">RESBLOCK</text>
+          <text x="414" y="48" class="lbl-soft" text-anchor="middle">72 CH</text>
+          <line x1="472" y1="40" x2="506" y2="40" class="stroke" marker-end="url(#f32-arr)"/>
+          <rect x="508" y="10" width="64" height="58" class="stroke fill-soft"/>
+          <text x="540" y="34" class="lbl-soft" text-anchor="middle">FC</text><text x="540" y="52" class="lbl" text-anchor="middle">8192</text>
+          <line x1="572" y1="40" x2="606" y2="40" class="stroke" marker-end="url(#f32-arr)"/>
+          <rect x="608" y="10" width="64" height="58" class="stroke fill-soft"/>
+          <text x="640" y="34" class="lbl-soft" text-anchor="middle">FC</text><text x="640" y="52" class="lbl" text-anchor="middle">4096</text>
+          <line x1="672" y1="40" x2="706" y2="40" class="stroke" marker-end="url(#f32-arr)"/>
+          <rect x="708" y="0" width="100" height="78" stroke="#2347d9" fill="#fffdf6" stroke-width="1.6"/>
+          <text x="758" y="26" class="lbl" text-anchor="middle">1800</text>
+          <text x="758" y="44" class="lbl-soft" text-anchor="middle">LOGITS</text>
+          <text x="758" y="62" class="lbl-soft" text-anchor="middle">SOFTMAX</text>
+        </g>
+        <text x="48" y="254" class="body">Output layout: 3 waypoints × 6 DoF (x, y, z, yaw, pitch, roll) × 100 bins per DoF.</text>
+        <text x="24" y="282" class="lbl-soft">FIG. 3.2 · RESNET8 PREDICTOR · §3.2.1.1</text>
+      </svg>
+    </figure>
+
+    <!-- ============ §3.4 BINS ============ -->
+    <h2 id="bins"><span class="num">§3.4</span>Action as classification</h2>
+
+    <p>
+      The network does <em>not</em> regress to a continuous waypoint coordinate. Each axis is discretised into 100 bins, and the network does a softmax over those bins. Six axes times three waypoints gives 18 independent 100-class predictions: 1800 logits total.
+    </p>
+
+    <p>
+      This choice comes from Kim et al.'s eye-surgery work. A regression head with squared error can collapse to the mean of the dataset, especially when multiple trajectories are plausible. A classification head only has to put probability mass on the right bin.
+    </p>
+
+    <figure>
+      <svg class="diag" viewBox="0 0 920 450" xmlns="http://www.w3.org/2000/svg">
+        <text x="24" y="28" class="lbl-big">CLASSIFICATION-BASED WAYPOINT GENERATION</text>
+        <text x="24" y="44" class="lbl-soft">REGRESSION RETURNS A NUMBER; THE THESIS PREDICTS DISTRIBUTIONS OVER ACTION BINS</text>
+        <line x1="24" y1="58" x2="896" y2="58" class="stroke-soft"/>
+
+        <g transform="translate(54,92)">
+          <text x="0" y="0" class="lbl-big">A · CONTINUOUS REGRESSION</text>
+          <text x="0" y="18" class="lbl-soft">ONE COORDINATE PER DOF</text>
+          <line x1="0" y1="116" x2="330" y2="116" class="stroke-2"/>
+          <line x1="0" y1="104" x2="0" y2="128" class="stroke"/>
+          <line x1="330" y1="104" x2="330" y2="128" class="stroke"/>
+          <text x="0" y="146" class="lbl-soft" text-anchor="middle">min</text>
+          <text x="330" y="146" class="lbl-soft" text-anchor="middle">max</text>
+          <path d="M 32 116 C 66 48 106 48 142 116" stroke="#5b7cf5" fill="none" stroke-width="1.4"/>
+          <path d="M 194 116 C 232 46 276 48 312 116" stroke="#5b7cf5" fill="none" stroke-width="1.4"/>
+          <line x1="166" y1="76" x2="166" y2="132" stroke="#c64545" stroke-width="1.6"/>
+          <text x="166" y="68" class="lbl" fill="#c64545" text-anchor="middle">MEAN PREDICTION</text>
+          <circle cx="88" cy="116" r="4" fill="#2347d9"/>
+          <circle cx="256" cy="116" r="4" fill="#2347d9"/>
+          <text x="88" y="166" class="lbl-soft" text-anchor="middle">VALID PATH</text>
+          <text x="256" y="166" class="lbl-soft" text-anchor="middle">VALID PATH</text>
+          <text x="0" y="214" class="body">Squared error can average two good choices into</text>
+          <text x="0" y="232" class="body">a bland action that commits to neither trajectory.</text>
+        </g>
+
+        <g transform="translate(468,92)">
+          <text x="0" y="0" class="lbl-big">B · ONE WAYPOINT AS SIX 100-BIN SOFTMAXES</text>
+          <text x="0" y="18" class="lbl-soft">EACH AXIS IS A 1D PROBABILITY HISTOGRAM</text>
+          <g transform="translate(0,48)">
+            <text x="0" y="24" class="lbl">x</text>
+            <rect x="28" y="0" width="188" height="34" class="stroke" fill="#fffdf6"/>
+            <rect x="36" y="24" width="7" height="10" fill="#eef2ff"/><rect x="48" y="22" width="7" height="12" fill="#eef2ff"/><rect x="60" y="18" width="7" height="16" fill="#eef2ff"/><rect x="72" y="10" width="7" height="24" fill="#5b7cf5" opacity="0.55"/><rect x="84" y="5" width="7" height="29" fill="#2347d9"/><rect x="96" y="12" width="7" height="22" fill="#5b7cf5" opacity="0.55"/><rect x="108" y="22" width="7" height="12" fill="#eef2ff"/><rect x="120" y="26" width="7" height="8" fill="#eef2ff"/>
+            <text x="230" y="24" class="lbl-soft">BIN 0..99</text>
+          </g>
+          <g transform="translate(0,88)">
+            <text x="0" y="24" class="lbl">y</text>
+            <rect x="28" y="0" width="188" height="34" class="stroke" fill="#fffdf6"/>
+            <rect x="54" y="27" width="7" height="7" fill="#eef2ff"/><rect x="66" y="25" width="7" height="9" fill="#eef2ff"/><rect x="78" y="19" width="7" height="15" fill="#eef2ff"/><rect x="90" y="9" width="7" height="25" fill="#5b7cf5" opacity="0.55"/><rect x="102" y="3" width="7" height="31" fill="#2347d9"/><rect x="114" y="8" width="7" height="26" fill="#2347d9" opacity="0.75"/><rect x="126" y="17" width="7" height="17" fill="#5b7cf5" opacity="0.55"/>
+          </g>
+          <g transform="translate(0,128)">
+            <text x="0" y="24" class="lbl">z</text>
+            <rect x="28" y="0" width="188" height="34" class="stroke" fill="#fffdf6"/>
+            <rect x="82" y="27" width="7" height="7" fill="#eef2ff"/><rect x="94" y="21" width="7" height="13" fill="#eef2ff"/><rect x="106" y="12" width="7" height="22" fill="#5b7cf5" opacity="0.55"/><rect x="118" y="4" width="7" height="30" fill="#2347d9"/><rect x="130" y="7" width="7" height="27" fill="#2347d9" opacity="0.75"/><rect x="142" y="16" width="7" height="18" fill="#5b7cf5" opacity="0.55"/>
+          </g>
+          <g transform="translate(0,168)">
+            <text x="0" y="24" class="lbl">yaw</text>
+            <rect x="28" y="0" width="188" height="34" class="stroke" fill="#fffdf6"/>
+            <rect x="40" y="28" width="7" height="6" fill="#eef2ff"/><rect x="52" y="22" width="7" height="12" fill="#eef2ff"/><rect x="64" y="12" width="7" height="22" fill="#5b7cf5" opacity="0.55"/><rect x="76" y="2" width="7" height="32" fill="#2347d9"/><rect x="88" y="10" width="7" height="24" fill="#5b7cf5" opacity="0.55"/>
+          </g>
+          <g transform="translate(0,208)">
+            <text x="0" y="24" class="lbl">pitch</text>
+            <rect x="48" y="0" width="168" height="34" class="stroke" fill="#fffdf6"/>
+            <rect x="104" y="26" width="7" height="8" fill="#eef2ff"/><rect x="116" y="18" width="7" height="16" fill="#eef2ff"/><rect x="128" y="8" width="7" height="26" fill="#5b7cf5" opacity="0.55"/><rect x="140" y="3" width="7" height="31" fill="#2347d9"/><rect x="152" y="11" width="7" height="23" fill="#5b7cf5" opacity="0.55"/>
+          </g>
+          <g transform="translate(0,248)">
+            <text x="0" y="24" class="lbl">roll</text>
+            <rect x="48" y="0" width="168" height="34" class="stroke" fill="#fffdf6"/>
+            <rect x="74" y="25" width="7" height="9" fill="#eef2ff"/><rect x="86" y="17" width="7" height="17" fill="#eef2ff"/><rect x="98" y="8" width="7" height="26" fill="#5b7cf5" opacity="0.55"/><rect x="110" y="5" width="7" height="29" fill="#2347d9"/><rect x="122" y="13" width="7" height="21" fill="#5b7cf5" opacity="0.55"/>
+          </g>
+        </g>
+
+        <g transform="translate(738,136)">
+          <text x="70" y="0" class="lbl" text-anchor="middle">3 FUTURE WAYPOINTS</text>
+          <text x="70" y="16" class="lbl-soft" text-anchor="middle">Δt = 0.5 S · N_w = 3</text>
+          <rect x="0" y="42" width="140" height="46" class="stroke fill-soft"/>
+          <text x="70" y="62" class="lbl" text-anchor="middle">W₁</text>
+          <text x="70" y="76" class="lbl-soft" text-anchor="middle">6 DOF × 100 BINS</text>
+          <rect x="0" y="104" width="140" height="46" class="stroke fill-soft"/>
+          <text x="70" y="124" class="lbl" text-anchor="middle">W₂</text>
+          <text x="70" y="138" class="lbl-soft" text-anchor="middle">6 DOF × 100 BINS</text>
+          <rect x="0" y="166" width="140" height="46" class="stroke fill-soft"/>
+          <text x="70" y="186" class="lbl" text-anchor="middle">W₃</text>
+          <text x="70" y="200" class="lbl-soft" text-anchor="middle">6 DOF × 100 BINS</text>
+          <text x="-28" y="132" class="lbl-soft" text-anchor="end">1800 TOTAL</text>
+        </g>
+
+        <g transform="translate(54,384)">
+          <line x1="0" y1="0" x2="812" y2="0" class="stroke-soft"/>
+          <text x="0" y="22" class="lbl-soft">p_bin = ((p_t − min) / (max − min)) × 100</text>
+          <text x="414" y="22" class="lbl-soft">3 WAYPOINTS × 6 DOF × 100 BINS = 1800 LOGITS</text>
+        </g>
+        <text x="24" y="432" class="lbl-soft">FIG. 3.3 · CLASSIFICATION-BASED WAYPOINT GENERATION · §3.2.1.2</text>
+      </svg>
+      <figcaption>
+        <span class="figno">FIG. 3.3</span> Continuous coordinate regression versus binned classification. The bin index comes from <span class="math-inline">p_bin = ((p_t − min) / (max − min)) × 100</span>; at inference, the selected bin maps back to a coordinate.
+      </figcaption>
+    </figure>
+
+    <!-- Codex improvement: add a visual analogue of thesis Fig. 3.2's bin-probability cloud. -->
+    <figure>
+      <svg class="diag" viewBox="0 0 920 380" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="f33b-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 Z" class="fill"/>
+          </marker>
+        </defs>
+        <text x="24" y="28" class="lbl-big">WHAT FIG. 3.2 IS REALLY SHOWING</text>
+        <text x="24" y="44" class="lbl-soft">THE NETWORK DOES NOT EMIT A POINT; IT EMITS PROBABILITY MASS AROUND EACH FUTURE WAYPOINT</text>
+        <line x1="24" y1="58" x2="896" y2="58" class="stroke-soft"/>
+
+        <g transform="translate(54,92)">
+          <text x="118" y="0" class="lbl" text-anchor="middle">Δḡ₁ · +0.5 S</text>
+          <line x1="14" y1="184" x2="220" y2="184" class="grid"/>
+          <line x1="14" y1="184" x2="52" y2="54" class="grid"/>
+          <line x1="14" y1="184" x2="14" y2="42" class="grid"/>
+          <path d="M 52 54 L 252 54 L 220 184" class="grid"/>
+          <path d="M 14 42 L 214 42 L 252 54" class="grid"/>
+          <path d="M 214 42 L 214 174 L 220 184" class="grid"/>
+          <circle cx="92" cy="134" r="9" fill="#2347d9" opacity="0.22"/><circle cx="118" cy="118" r="12" fill="#2347d9" opacity="0.38"/><circle cx="142" cy="106" r="16" fill="#2347d9" opacity="0.65"/><circle cx="164" cy="96" r="10" fill="#2347d9" opacity="0.35"/>
+          <circle cx="128" cy="146" r="8" fill="#5b7cf5" opacity="0.28"/><circle cx="154" cy="132" r="11" fill="#5b7cf5" opacity="0.42"/><circle cx="178" cy="120" r="7" fill="#5b7cf5" opacity="0.24"/>
+          <line x1="136" y1="92" x2="154" y2="110" stroke="#c64545" stroke-width="1.4"/>
+          <line x1="154" y1="92" x2="136" y2="110" stroke="#c64545" stroke-width="1.4"/>
+          <line x1="148" y1="100" x2="200" y2="60" stroke="#c64545" stroke-width="0.8"/>
+          <text x="200" y="54" class="lbl-soft" fill="#c64545">TRUE BIN (EXPERT)</text>
+          <text x="118" y="212" class="lbl-soft" text-anchor="middle">HIGH MASS NEAR THE EXPERT WAYPOINT</text>
+        </g>
+
+        <g transform="translate(346,92)">
+          <text x="118" y="0" class="lbl" text-anchor="middle">Δḡ₂ · +1.0 S</text>
+          <line x1="14" y1="184" x2="220" y2="184" class="grid"/>
+          <line x1="14" y1="184" x2="52" y2="54" class="grid"/>
+          <line x1="14" y1="184" x2="14" y2="42" class="grid"/>
+          <path d="M 52 54 L 252 54 L 220 184" class="grid"/>
+          <path d="M 14 42 L 214 42 L 252 54" class="grid"/>
+          <path d="M 214 42 L 214 174 L 220 184" class="grid"/>
+          <circle cx="82" cy="150" r="7" fill="#5b7cf5" opacity="0.2"/><circle cx="112" cy="132" r="10" fill="#2347d9" opacity="0.34"/><circle cx="140" cy="118" r="14" fill="#2347d9" opacity="0.58"/><circle cx="166" cy="104" r="18" fill="#2347d9" opacity="0.72"/>
+          <circle cx="190" cy="92" r="12" fill="#5b7cf5" opacity="0.45"/><circle cx="206" cy="120" r="8" fill="#5b7cf5" opacity="0.24"/><circle cx="150" cy="150" r="8" fill="#5b7cf5" opacity="0.28"/>
+          <line x1="158" y1="96" x2="176" y2="114" stroke="#c64545" stroke-width="1.4"/>
+          <line x1="176" y1="96" x2="158" y2="114" stroke="#c64545" stroke-width="1.4"/>
+          <text x="118" y="212" class="lbl-soft" text-anchor="middle">EACH DOF IS TRAINED WITH CROSS-ENTROPY</text>
+        </g>
+
+        <g transform="translate(638,92)">
+          <text x="118" y="0" class="lbl" text-anchor="middle">Δḡ₃ · +1.5 S</text>
+          <line x1="14" y1="184" x2="220" y2="184" class="grid"/>
+          <line x1="14" y1="184" x2="52" y2="54" class="grid"/>
+          <line x1="14" y1="184" x2="14" y2="42" class="grid"/>
+          <path d="M 52 54 L 252 54 L 220 184" class="grid"/>
+          <path d="M 14 42 L 214 42 L 252 54" class="grid"/>
+          <path d="M 214 42 L 214 174 L 220 184" class="grid"/>
+          <circle cx="92" cy="152" r="7" fill="#5b7cf5" opacity="0.2"/><circle cx="120" cy="134" r="9" fill="#5b7cf5" opacity="0.28"/><circle cx="150" cy="116" r="12" fill="#2347d9" opacity="0.42"/><circle cx="176" cy="100" r="18" fill="#2347d9" opacity="0.70"/>
+          <circle cx="198" cy="84" r="14" fill="#2347d9" opacity="0.52"/><circle cx="214" cy="112" r="8" fill="#5b7cf5" opacity="0.24"/><circle cx="162" cy="150" r="7" fill="#5b7cf5" opacity="0.22"/>
+          <line x1="168" y1="92" x2="186" y2="110" stroke="#c64545" stroke-width="1.4"/>
+          <line x1="186" y1="92" x2="168" y2="110" stroke="#c64545" stroke-width="1.4"/>
+          <text x="118" y="212" class="lbl-soft" text-anchor="middle">INFERENCE CHOOSES A BIN, THEN MAPS BACK</text>
+        </g>
+
+        <line x1="270" y1="166" x2="324" y2="166" class="stroke" marker-end="url(#f33b-arr)"/>
+        <line x1="562" y1="166" x2="616" y2="166" class="stroke" marker-end="url(#f33b-arr)"/>
+        <text x="24" y="362" class="lbl-soft">FIG. 3.3B · BIN PROBABILITY CLOUD · AFTER THESIS FIG. 3.2</text>
+      </svg>
+      <figcaption>
+        <span class="figno">FIG. 3.3B</span> The thesis figure is not just "100 bins." It is a probability cloud over discretised pose coordinates for each future pose increment. The red plus is the expert bin; opacity is predicted probability mass.
+      </figcaption>
+    </figure>
+
+    <div class="callout">
+      <span class="tag">Dataset trick</span>
+      <p>
+        <!-- Codex improvement: add the missing §3.2.1.3 augmentation detail. -->
+        The thesis doubles the supervised dataset with a symmetry trick. Flip the camera image about the vertical axis, then mirror the future waypoints about the UAV's local x-z plane. A fruit on the top-left becomes a fruit on the top-right, and the action labels flip with it.
+      </p>
+    </div>
+
+    <div class="callout">
+      <span class="tag">For the LLM person</span>
+      <p>
+        <!-- Codex improvement: keep the analogy without over-claiming exact VLA tokenizer mechanics. -->
+        This is the same broad move as <em>tokenizing</em> a continuous output. Decoder LLMs predict the next token over a fixed vocabulary; here the network predicts the next waypoint over a fixed bin grid. The useful analogy is not that this thesis is an LLM, but that classification gives the model a sharper training signal than direct continuous regression.
+      </p>
+    </div>
+
+    <!-- ============ §3.5 EXPERT ============ -->
+    <h2 id="expert"><span class="num">§3.5</span>The MPC teacher</h2>
+
+    <p>
+      You cannot train an imitation network without an expert. The thesis builds one inside Unity: with full ground-truth knowledge of the tree, the orange, and the drone, a Differential Dynamic Programming solver computes optimal trajectories.
+    </p>
+
+    <p>
+      DDP balances state error, control effort, obstacle avoidance, and yaw alignment:
+    </p>
+
+    <div class="eq" style="text-align:left;">
+      J = ½ dx<sub>f</sub>ᵀ Q<sub>f</sub> dx<sub>f</sub> + Σ<sub>i</sub> dt[ ½ dxᵀ Q dx + ½ uᵀ R u + b·c(x) + y(x) ]
+      <span class="lbl">EQ 3.1</span>
+    </div>
+
+    <p>The four terms, in plain language:</p>
+    <ul style="line-height:1.7;">
+      <li><strong>dx<sub>f</sub>ᵀ Q<sub>f</sub> dx<sub>f</sub></strong> — final-state cost. Get to the orange.</li>
+      <li><strong>dxᵀ Q dx + uᵀ R u</strong> — running costs. Do not wander; do not burn unnecessary control.</li>
+      <li><strong>b · c(x)</strong> — obstacle cost. This is two costs under one name: a ground term that penalizes unsafe low altitude, and a tree term that treats the canopy as a cylinder and penalizes squared intersection depth. The gain <span class="math-inline">b</span> starts at 0 and doubles after each convergence.</li>
+      <li><strong>y(x) = g(1 − R·e₁ · d<sub>f</sub>)</strong> — yaw cost. Keep the drone's forward axis pointed at the orange. The thesis deliberately defines <span class="math-inline">d<sub>f</sub></span> in the x-y plane only; including z made the solver dive at the start.</li>
+    </ul>
+
+    <div class="callout">
+      <span class="tag">DDP detail</span>
+      <p>
+        <!-- Codex improvement: surface the ground/tree split and the x-y-only yaw vector from §3.3.2. -->
+        This is the expert's privileged information in concrete form: it knows the tree cylinder, the ground threshold, the orange position, and the drone state. The student never receives those variables. It only sees the RGB image and mask, then learns to imitate the actions this cost function would have produced.
+      </p>
+    </div>
+
+    <figure>
+      <svg class="diag" viewBox="0 0 860 350" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="f34-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 Z" class="fill"/>
+          </marker>
+        </defs>
+        <text x="24" y="28" class="lbl-big">TEACHER-STUDENT IMITATION</text>
+        <line x1="24" y1="42" x2="836" y2="42" class="stroke-soft"/>
+        <g transform="translate(50,72)">
+          <text x="0" y="0" class="lbl-big">TEACHER · PRIVILEGED DDP</text>
+          <rect x="0" y="22" width="310" height="210" class="stroke" fill="#fffdf6"/>
+          <text x="20" y="54" class="lbl">INPUTS</text>
+          <text x="20" y="76" class="body">Tree pose and cylinder radius</text>
+          <text x="20" y="96" class="body">Orange position</text>
+          <text x="20" y="116" class="body">Drone initial state</text>
+          <text x="20" y="150" class="lbl">OPTIMIZES</text>
+          <text x="20" y="172" class="body">Cost J with obstacle gain ramp</text>
+          <text x="20" y="192" class="body">Expert trajectory in Unity</text>
+          <text x="20" y="220" class="lbl-soft">300 TRAJ × 500 STEPS = 150K SAMPLES</text>
+        </g>
+        <g transform="translate(390,178)">
+          <line x1="0" y1="0" x2="80" y2="0" class="stroke-2" marker-end="url(#f34-arr)"/>
+          <text x="40" y="18" class="lbl" text-anchor="middle">DISTILL</text>
+          <text x="40" y="36" class="lbl-soft" text-anchor="middle">IMAGE → ACTION</text>
+        </g>
+        <g transform="translate(500,72)">
+          <text x="0" y="0" class="lbl-big">STUDENT · RESNET8</text>
+          <rect x="0" y="22" width="310" height="210" stroke="#2347d9" fill="#eef2ff" stroke-width="1.4"/>
+          <text x="20" y="54" class="lbl">INPUTS</text>
+          <text x="20" y="76" class="body">RGB camera frame</text>
+          <text x="20" y="96" class="body">Segmentation mask</text>
+          <text x="20" y="116" class="body">No tree/orange ground truth</text>
+          <text x="20" y="150" class="lbl">LEARNS</text>
+          <text x="20" y="172" class="body">Cross-entropy against teacher bins</text>
+          <text x="20" y="192" class="body">Predicts 3 future pose increments</text>
+          <text x="20" y="220" class="lbl-soft">DEPLOYED CLOSED-LOOP ON IMAGES</text>
+        </g>
+        <text x="24" y="328" class="lbl-soft">FIG. 3.4 · TEACHER-STUDENT IMITATION · §3.3.2</text>
+      </svg>
+    </figure>
+
+    <div class="callout">
+      <span class="tag">For the LLM person</span>
+      <p>
+        This is supervised fine-tuning where the labels are produced offline by a privileged model. The teacher has access to the world; the student only has access to a camera. "Stronger" here means "has better inputs," not "has more parameters."
+      </p>
+    </div>
+
+    <!-- ============ §3.6 DAGGER ============ -->
+    <h2 id="dagger"><span class="num">§3.6</span>DAgger</h2>
+
+    <p>
+      Pure imitation has a distribution-shift problem. At inference time the student drifts away from expert states, and then every subsequent input is a situation the student did not see during training.
+    </p>
+
+    <p>
+      DAgger fixes this by letting the student fly in simulation, asking the expert what it would have done from those student-visited states, adding the difficult image-waypoint pairs to the dataset, and retraining. In this thesis, an example is added when the prediction error exceeds <span class="math-inline">ε</span>; over time <span class="math-inline">ε</span> decays to 2.5 cm.
+    </p>
+
+    <figure>
+      <svg class="diag" viewBox="0 0 860 380" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="f35-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 Z" class="fill"/>
+          </marker>
+        </defs>
+        <text x="24" y="28" class="lbl-big">DAgger DATASET AGGREGATION LOOP</text>
+        <line x1="24" y1="42" x2="836" y2="42" class="stroke-soft"/>
+        <g transform="translate(48,76)">
+          <rect x="0" y="0" width="160" height="64" class="stroke fill-soft" rx="3"/>
+          <text x="80" y="24" class="lbl" text-anchor="middle">1 · ROLLOUT</text>
+          <text x="80" y="42" class="lbl-soft" text-anchor="middle">STUDENT FLIES SIM</text>
+          <line x1="160" y1="32" x2="202" y2="32" class="stroke" marker-end="url(#f35-arr)"/>
+          <rect x="204" y="0" width="160" height="64" class="stroke fill-soft" rx="3"/>
+          <text x="284" y="24" class="lbl" text-anchor="middle">2 · COMPARE</text>
+          <text x="284" y="42" class="lbl-soft" text-anchor="middle">PREDICTED VS EXPERT</text>
+          <line x1="364" y1="32" x2="406" y2="32" class="stroke" marker-end="url(#f35-arr)"/>
+          <rect x="408" y="0" width="160" height="64" class="stroke fill-soft" rx="3"/>
+          <text x="488" y="24" class="lbl" text-anchor="middle">3 · AGGREGATE</text>
+          <text x="488" y="42" class="lbl-soft" text-anchor="middle">IF d &gt; ε</text>
+          <line x1="568" y1="32" x2="610" y2="32" class="stroke" marker-end="url(#f35-arr)"/>
+          <rect x="612" y="0" width="160" height="64" stroke="#2347d9" fill="#eef2ff" stroke-width="1.6" rx="3"/>
+          <text x="692" y="24" class="lbl" text-anchor="middle">4 · RETRAIN</text>
+          <text x="692" y="42" class="lbl-soft" text-anchor="middle">NEW DATASET</text>
+        </g>
+        <path d="M 740 146 C 740 236 124 236 124 146" class="dashed" marker-end="url(#f35-arr)"/>
+        <text x="432" y="230" class="lbl-soft" text-anchor="middle">REPEAT WHILE ε DECAYS · FINAL THRESHOLD ε = 2.5 CM</text>
+        <g transform="translate(64,272)">
+          <text x="0" y="0" class="lbl-big">DISTANCE METRIC</text>
+          <line x1="0" y1="12" x2="720" y2="12" class="stroke-soft"/>
+          <text x="0" y="40" class="body">Sum over future waypoints: Euclidean position error plus forward-axis rotation mismatch.</text>
+          <text x="0" y="64" class="lbl-soft">THE STUDENT'S OWN MISTAKES BECOME PART OF THE NEXT TRAINING SET.</text>
+        </g>
+        <text x="24" y="360" class="lbl-soft">FIG. 3.5 · DAGGER LOOP · §3.3.4</text>
+      </svg>
+    </figure>
+
+    <!-- ============ §3.7 EMERGENT ============ -->
+    <h2 id="emergent"><span class="num">§3.7</span>Emergent exploration</h2>
+
+    <p>
+      The interesting result is not the average success rate. It is the policy that appears when the orange is not immediately visible.
+    </p>
+
+    <p>
+      The simulated training data contains reachable oranges. But when the trained network is tested on a tree with no orange present, it does not simply stall; it circles the tree. The thesis calls this emergent exploratory behavior. The loss never says "search," but the policy has learned that moving around a fruit-tree-shaped object is a useful way to make hidden fruit visible.
+    </p>
+
+    <figure>
+      <svg class="diag" viewBox="0 0 920 380" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="f36-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 Z" class="fill"/>
+          </marker>
+          <symbol id="f36-tree" viewBox="0 0 150 150">
+            <ellipse cx="72" cy="34" rx="34" ry="24" stroke="#2347d9" fill="#2f8f5b" stroke-width="1.2" opacity="0.18"/>
+            <ellipse cx="105" cy="48" rx="34" ry="26" stroke="#2347d9" fill="#2f8f5b" stroke-width="1.2" opacity="0.2"/>
+            <ellipse cx="122" cy="82" rx="30" ry="28" stroke="#2347d9" fill="#2f8f5b" stroke-width="1.2" opacity="0.18"/>
+            <ellipse cx="98" cy="112" rx="36" ry="26" stroke="#2347d9" fill="#2f8f5b" stroke-width="1.2" opacity="0.2"/>
+            <ellipse cx="58" cy="116" rx="34" ry="24" stroke="#2347d9" fill="#2f8f5b" stroke-width="1.2" opacity="0.18"/>
+            <ellipse cx="28" cy="88" rx="32" ry="28" stroke="#2347d9" fill="#2f8f5b" stroke-width="1.2" opacity="0.2"/>
+            <ellipse cx="36" cy="50" rx="30" ry="24" stroke="#2347d9" fill="#2f8f5b" stroke-width="1.2" opacity="0.18"/>
+            <circle cx="76" cy="76" r="16" stroke="#2347d9" fill="#fffdf6" stroke-width="1.1"/>
+            <circle cx="76" cy="76" r="5" fill="#2347d9"/>
+          </symbol>
+        </defs>
+        <text x="24" y="28" class="lbl-big">EMERGENT EXPLORATION · TOP-DOWN TRAJECTORIES</text>
+        <line x1="24" y1="42" x2="896" y2="42" class="stroke-soft"/>
+        <line x1="310" y1="70" x2="310" y2="322" class="grid"/>
+        <line x1="604" y1="70" x2="604" y2="322" class="grid"/>
+
+        <g transform="translate(38,74)">
+          <text x="128" y="0" class="lbl" text-anchor="middle">A · HEAD-ON</text>
+          <text x="128" y="16" class="lbl-soft" text-anchor="middle">ORANGE VISIBLE</text>
+          <use href="#f36-tree" x="102" y="66" width="150" height="150"/>
+          <circle cx="180" cy="142" r="7" fill="#f6802b" stroke="#c75d18" stroke-width="1.1"/>
+          <path d="M 40 142 C 78 140 124 142 174 142" stroke="#2347d9" fill="none" stroke-width="1.6" stroke-dasharray="4 3" marker-end="url(#f36-arr)"/>
+          <circle cx="34" cy="142" r="4" class="fill"/>
+          <text x="34" y="164" class="lbl-soft" text-anchor="middle">x₀</text>
+          <text x="130" y="250" class="lbl-soft" text-anchor="middle">DIRECT COMMIT</text>
+        </g>
+
+        <g transform="translate(332,74)">
+          <text x="128" y="0" class="lbl" text-anchor="middle">B · SIDE-ON</text>
+          <text x="128" y="16" class="lbl-soft" text-anchor="middle">FRUIT INITIALLY HIDDEN</text>
+          <use href="#f36-tree" x="102" y="66" width="150" height="150"/>
+          <circle cx="196" cy="112" r="7" fill="#f6802b" stroke="#c75d18" stroke-width="1.1"/>
+          <circle cx="36" cy="84" r="4" class="fill"/>
+          <text x="36" y="106" class="lbl-soft" text-anchor="middle">x₀</text>
+          <path d="M 42 84 C 96 42 178 50 224 92 C 248 116 242 154 202 162 C 178 166 158 156 148 144" stroke="#2347d9" fill="none" stroke-width="1.6" stroke-dasharray="4 3" marker-end="url(#f36-arr)"/>
+          <text x="134" y="250" class="lbl-soft" text-anchor="middle">SEARCH ARC THEN COMMIT</text>
+        </g>
+
+        <g transform="translate(626,74)">
+          <text x="128" y="0" class="lbl" text-anchor="middle">C · NO ORANGE</text>
+          <text x="128" y="16" class="lbl-soft" text-anchor="middle">POLICY CIRCLES THE TREE</text>
+          <use href="#f36-tree" x="102" y="66" width="150" height="150"/>
+          <circle cx="178" cy="142" r="10" fill="#fffdf6" stroke="#c64545" stroke-width="1.2" stroke-dasharray="2 2"/>
+          <line x1="172" y1="136" x2="184" y2="148" stroke="#c64545" stroke-width="1.2"/>
+          <line x1="184" y1="136" x2="172" y2="148" stroke="#c64545" stroke-width="1.2"/>
+          <circle cx="34" cy="84" r="4" class="fill"/>
+          <text x="34" y="106" class="lbl-soft" text-anchor="middle">x₀</text>
+          <path d="M 42 84 C 94 40 184 40 228 92 C 266 138 236 202 168 214 C 90 228 34 182 54 126 C 70 80 130 70 184 92" stroke="#2347d9" fill="none" stroke-width="1.6" stroke-dasharray="4 3" marker-end="url(#f36-arr)"/>
+          <text x="134" y="250" class="lbl-soft" text-anchor="middle">LOOPS AROUND CANOPY</text>
+        </g>
+        <text x="24" y="356" class="lbl-soft">FIG. 3.6 · EMERGENT EXPLORATION · AFTER THESIS FIG. 3.4</text>
+      </svg>
+      <figcaption>
+        <span class="figno">FIG. 3.6</span> Head-on cases produce direct paths. Side-on or hidden-fruit cases produce search arcs. With no orange present, the policy still circles the tree, demonstrating the latent search behavior the thesis emphasizes.
+      </figcaption>
+    </figure>
+
+    <p>
+      <!-- Codex improvement: correct the occlusion-bin value from thesis Fig. 3.5 and avoid claiming monotonic linearity. -->
+      Simulation success by scenario: <strong>85%</strong> head-on, <strong>70%</strong> hard cases, <strong>77.5%</strong> overall. The occlusion test is harsher: each 10% occlusion bin gets 25 runs, and the 50–60% bin drops to <strong>40%</strong> success.
+    </p>
+
+    <!-- Codex improvement: visualize thesis Fig. 3.5 instead of leaving it as prose. -->
+    <figure>
+      <svg class="diag" viewBox="0 0 840 300" xmlns="http://www.w3.org/2000/svg">
+        <text x="24" y="30" class="lbl-big">SUCCESS VS OCCLUSION FRACTION</text>
+        <text x="24" y="46" class="lbl-soft">25 SIMULATION RUNS PER 10% OCCLUSION BIN · AFTER THESIS FIG. 3.5</text>
+        <line x1="24" y1="60" x2="816" y2="60" class="stroke-soft"/>
+        <g transform="translate(84,72)">
+          <line x1="0" y1="168" x2="660" y2="168" class="stroke"/>
+          <line x1="0" y1="8" x2="0" y2="168" class="stroke"/>
+          <line x1="0" y1="8" x2="660" y2="8" class="grid"/>
+          <line x1="0" y1="48" x2="660" y2="48" class="grid"/>
+          <line x1="0" y1="88" x2="660" y2="88" class="grid"/>
+          <line x1="0" y1="128" x2="660" y2="128" class="grid"/>
+          <text x="-12" y="12" class="lbl-soft" text-anchor="end">100</text>
+          <text x="-12" y="52" class="lbl-soft" text-anchor="end">75</text>
+          <text x="-12" y="92" class="lbl-soft" text-anchor="end">50</text>
+          <text x="-12" y="132" class="lbl-soft" text-anchor="end">25</text>
+          <text x="-12" y="172" class="lbl-soft" text-anchor="end">0</text>
+          <rect x="38" y="8" width="74" height="160" fill="#2347d9"/>
+          <rect x="142" y="24" width="74" height="144" fill="#2347d9" opacity="0.92"/>
+          <rect x="246" y="40" width="74" height="128" fill="#2347d9" opacity="0.84"/>
+          <rect x="350" y="32" width="74" height="136" fill="#2347d9" opacity="0.88"/>
+          <rect x="454" y="48" width="74" height="120" fill="#2347d9" opacity="0.78"/>
+          <rect x="558" y="104" width="74" height="64" fill="#2347d9" opacity="0.62"/>
+          <text x="75" y="0" class="lbl" text-anchor="middle">100%</text>
+          <text x="179" y="16" class="lbl" text-anchor="middle">90%</text>
+          <text x="283" y="32" class="lbl" text-anchor="middle">80%</text>
+          <text x="387" y="24" class="lbl" text-anchor="middle">85%</text>
+          <text x="491" y="40" class="lbl" text-anchor="middle">75%</text>
+          <text x="595" y="96" class="lbl" text-anchor="middle">40%</text>
+          <text x="75" y="190" class="lbl-soft" text-anchor="middle">0–10</text>
+          <text x="179" y="190" class="lbl-soft" text-anchor="middle">10–20</text>
+          <text x="283" y="190" class="lbl-soft" text-anchor="middle">20–30</text>
+          <text x="387" y="190" class="lbl-soft" text-anchor="middle">30–40</text>
+          <text x="491" y="190" class="lbl-soft" text-anchor="middle">40–50</text>
+          <text x="595" y="190" class="lbl-soft" text-anchor="middle">50–60</text>
+          <text x="330" y="222" class="lbl-soft" text-anchor="middle">OCCLUSION PERCENTAGE</text>
+          <text x="-54" y="92" class="lbl-soft" text-anchor="middle" transform="rotate(-90 -54 92)">SUCCESS PERCENTAGE</text>
+        </g>
+        <text x="24" y="282" class="lbl-soft">FIG. 3.7 · OCCLUSION RESULTS · §3.3.6</text>
+      </svg>
+      <figcaption>
+        <span class="figno">FIG. 3.7</span> The trend is "more occlusion hurts," not a clean line. The 30–40% bin is slightly better than 20–30%, but the cliff at 50–60% is real: only 40% success.
+      </figcaption>
+    </figure>
+
+    <!-- ============ §3.8 SIM-TO-REAL ============ -->
+    <h2 id="real"><span class="num">§3.8</span>Sim → real</h2>
+
+    <p>
+      <!-- Codex improvement: separate "trained on real data" from true sim-to-real transfer. -->
+      When the same architecture is trained on real-world data and flown on the actual drone, it still does not match the baseline's grasp reliability. The thesis reports final pose error over 71 flights instead of a pick-success rate.
+    </p>
+
+    <ol style="line-height:1.7;">
+      <li>The real tree is visually messier than Unity: shadows, leaf texture, lighting changes, and depth noise.</li>
+      <li>Real expert trajectories are hand-carried demonstrations, not DDP-optimal trajectories. They are noisier and less consistent.</li>
+    </ol>
+
+    <div class="callout warn">
+      <span class="tag">Real-flight failsafes</span>
+      <p>
+        <!-- Codex improvement: add the two segmentation-based safety rules from §3.4.3. -->
+        The deployed real-world policy still leans on the segmentation network for safety. If the orange mask gets too large, the drone assumes it is too close to the tree and sets <span class="math-inline">Δḡ = 0</span>, hovering in place. If the mask goes to zero, the drone stops translating and commands a <span class="math-inline">10°</span> yaw turn until the orange comes back into view. This is a learned planner with two hand-written guardrails.
+      </p>
+    </div>
+
+    <figure>
+      <svg class="diag" viewBox="0 0 840 260" xmlns="http://www.w3.org/2000/svg">
+        <text x="24" y="30" class="lbl-big">SIM AND REAL WAYPOINT ERROR</text>
+        <line x1="24" y1="44" x2="816" y2="44" class="stroke-soft"/>
+        <g transform="translate(54,76)">
+          <text x="0" y="16" class="lbl">SIM TRAINED</text>
+          <rect x="128" y="0" width="102" height="22" fill="#2f8f5b"/>
+          <rect x="128" y="36" width="86" height="22" fill="#2f8f5b"/>
+          <rect x="128" y="72" width="82" height="22" fill="#2f8f5b"/>
+          <text x="244" y="16" class="lbl-soft">Δḡ₁ · 5.1 CM</text>
+          <text x="244" y="52" class="lbl-soft">Δḡ₂ · 4.3 CM</text>
+          <text x="244" y="88" class="lbl-soft">Δḡ₃ · 4.1 CM</text>
+          <text x="0" y="122" class="lbl-soft">300 TRAJ · 150K SAMPLES · 77.5% SIM SUCCESS</text>
+        </g>
+        <g transform="translate(462,76)">
+          <text x="0" y="16" class="lbl">REAL TRAINED</text>
+          <rect x="128" y="0" width="96" height="22" fill="#c64545"/>
+          <rect x="128" y="36" width="92" height="22" fill="#c64545"/>
+          <rect x="128" y="72" width="88" height="22" fill="#c64545"/>
+          <text x="238" y="16" class="lbl-soft">Δḡ₁ · 4.8 CM</text>
+          <text x="238" y="52" class="lbl-soft">Δḡ₂ · 4.6 CM</text>
+          <text x="238" y="88" class="lbl-soft">Δḡ₃ · 4.4 CM</text>
+          <text x="0" y="122" class="lbl-soft">314 HAND-CARRIED DEMOS · 71 FLIGHTS</text>
+        </g>
+        <text x="24" y="240" class="lbl-soft">FIG. 3.8 · WAYPOINT ERROR · §3.4.3</text>
+      </svg>
+    </figure>
+
+    <p>
+      The per-waypoint error in centimetres is comparable, but that does not translate directly to mission success. Small waypoint errors compound through the closed loop, and the real tree is less forgiving than the simulator. The thesis points to Sim2Real transfer and better world models as the next fixes.
+    </p>
+
+    <div class="pagenav">
+      <a href="chapter-2.html">← Previous<span class="nm">2 · The decoupled pipeline</span></a>
+      <a href="chapter-4.html">Next →<span class="nm">4 · What worked</span></a>
+    </div>
+
+  </article>
+
+  <div class="margin-tag">
+    <span class="top">PERCEPTION-BASED UAV PATH PLANNING</span>
+    <span class="mid">CHAPTER 3 · LEARNING TO PLAN</span>
+    <span class="bot">FIG. 3.1 — 3.8</span>
+  </div>
+
+</main>
+
+</body>
+</html>

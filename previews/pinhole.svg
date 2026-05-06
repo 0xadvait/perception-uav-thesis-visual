@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 940 550" ><style>
+    .stroke    { stroke: #2347d9; fill: none; stroke-width: 1.2; }
+    .stroke-2  { stroke: #2347d9; fill: none; stroke-width: 1.8; }
+    .stroke-soft { stroke: #93a8f0; fill: none; stroke-width: 1; }
+    .fill      { fill: #2347d9; }
+    .fill-soft { fill: #eef2ff; }
+    .fill-orange { fill: #f6802b; }
+    .fill-green  { fill: #2f8f5b; }
+    .lead      { stroke: #2347d9; fill: none; stroke-width: 0.8; }
+    .dashed    { stroke: #2347d9; fill: none; stroke-width: 0.8; stroke-dasharray: 3 3; }
+    .grid      { stroke: #d8e0f5; fill: none; stroke-width: 0.5; }
+    .lbl       { font-family: "JetBrains Mono", "SF Mono", Menlo, monospace; font-size: 9.5px; fill: #2347d9; letter-spacing: 0.06em; text-transform: uppercase; }
+    .lbl-soft  { font-family: "JetBrains Mono", "SF Mono", Menlo, monospace; font-size: 9px; fill: #9ca3af; letter-spacing: 0.06em; text-transform: uppercase; }
+    .lbl-big   { font-family: "JetBrains Mono", "SF Mono", Menlo, monospace; font-size: 11px; fill: #2347d9; letter-spacing: 0.06em; text-transform: uppercase; font-weight: 600; }
+    .body      { font-family: "Iowan Old Style", Palatino, Georgia, serif; font-size: 11px; fill: #1f2937; }
+    </style><rect width="100%" height="100%" fill="#fffdf6"/>
+        <defs>
+          <marker id="f23-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 Z" class="fill"/>
+          </marker>
+        </defs>
+
+        <text x="24" y="28" class="lbl-big">PINHOLE CAMERA MODEL · PIXEL TO 3D POINT</text>
+        <text x="24" y="44" class="lbl-soft">SIDE CUTAWAY: SENSOR PLANE BEHIND A PINHOLE, WORLD POINT P IN FRONT</text>
+        <line x1="24" y1="58" x2="916" y2="58" class="stroke-soft"/>
+
+        <!-- camera body, sensor, and pinhole -->
+        <g>
+          <path d="M 82 136 L 192 102 L 344 132 L 230 168 Z" class="stroke fill-soft" stroke-width="1.5"/>
+          <path d="M 82 136 L 230 168 L 230 338 L 82 304 Z" class="stroke" fill="#eef2ff"/>
+          <path d="M 230 168 L 344 132 L 344 300 L 230 338 Z" class="stroke" fill="#dfe7ff"/>
+          <path d="M 112 178 L 220 148 L 220 308 L 112 338 Z" stroke="#2347d9" fill="#fffdf6" stroke-width="1.2"/>
+          <path d="M 308 148 L 344 132 L 344 300 L 308 316 Z" class="stroke" fill="#fffdf6"/>
+          <circle cx="344" cy="218" r="7" fill="#1f2937" stroke="#2347d9" stroke-width="1.2"/>
+          <circle cx="344" cy="218" r="2.6" fill="#fffdf6"/>
+
+          <line x1="130" y1="173" x2="130" y2="333" class="grid"/>
+          <line x1="148" y1="168" x2="148" y2="328" class="grid"/>
+          <line x1="166" y1="163" x2="166" y2="323" class="grid"/>
+          <line x1="184" y1="158" x2="184" y2="318" class="grid"/>
+          <line x1="202" y1="153" x2="202" y2="313" class="grid"/>
+          <line x1="112" y1="206" x2="220" y2="176" class="grid"/>
+          <line x1="112" y1="238" x2="220" y2="208" class="grid"/>
+          <line x1="112" y1="270" x2="220" y2="240" class="grid"/>
+          <line x1="112" y1="302" x2="220" y2="272" class="grid"/>
+          <circle cx="176" cy="246" r="5" fill="#5b7cf5"/>
+          <line x1="176" y1="246" x2="206" y2="238" stroke="#c64545" stroke-width="1.2" marker-end="url(#f23-arr)"/>
+          <line x1="176" y1="246" x2="176" y2="204" stroke="#2f8f5b" stroke-width="1.2" marker-end="url(#f23-arr)"/>
+          <text x="211" y="242" class="lbl" fill="#c64545">u</text>
+          <text x="181" y="202" class="lbl" fill="#2f8f5b">v</text>
+
+          <text x="108" y="368" class="lbl">IMAGE PLANE</text>
+          <text x="108" y="382" class="lbl-soft">PIXEL GRID ON SENSOR</text>
+          <text x="316" y="112" class="lbl">PINHOLE</text>
+          <line x1="330" y1="116" x2="342" y2="210" class="lead"/>
+        </g>
+
+        <!-- rays from the orange through the pinhole to the sensor -->
+        <g>
+          <circle cx="596" cy="152" r="25" fill="#f6802b" stroke="#c75d18" stroke-width="1.4"/>
+          <ellipse cx="587" cy="143" rx="6" ry="4" fill="#fffdf6" opacity="0.7"/>
+          <path d="M 595 127 C 600 113 612 112 620 121" stroke="#2f8f5b" fill="none" stroke-width="1.4"/>
+          <text x="628" y="130" class="lbl">WORLD POINT P</text>
+          <text x="628" y="146" class="lbl-soft">P = (x_c, y_c, z_c)</text>
+          <text x="628" y="160" class="lbl-soft">ORANGE SURFACE SAMPLE</text>
+
+          <line x1="596" y1="127" x2="344" y2="218" stroke="#2347d9" stroke-width="1" stroke-dasharray="3 3"/>
+          <line x1="596" y1="177" x2="344" y2="218" stroke="#2347d9" stroke-width="1" stroke-dasharray="3 3"/>
+          <line x1="344" y1="218" x2="176" y2="246" stroke="#5b7cf5" stroke-width="1.2" stroke-dasharray="3 3"/>
+          <text x="184" y="264" class="lbl-soft">PIXEL (u,v)</text>
+        </g>
+
+        <!-- focal length, camera frame, and depth -->
+        <g>
+          <line x1="220" y1="402" x2="344" y2="402" class="stroke"/>
+          <line x1="220" y1="396" x2="220" y2="408" class="stroke"/>
+          <line x1="344" y1="396" x2="344" y2="408" class="stroke"/>
+          <text x="282" y="422" class="lbl" text-anchor="middle">f</text>
+          <text x="282" y="436" class="lbl-soft" text-anchor="middle">FOCAL LENGTH</text>
+
+          <line x1="344" y1="218" x2="454" y2="218" stroke="#c64545" stroke-width="1.4" marker-end="url(#f23-arr)"/>
+          <text x="460" y="222" class="lbl" fill="#c64545">ẑ_c</text>
+          <line x1="344" y1="218" x2="344" y2="126" stroke="#2f8f5b" stroke-width="1.4" marker-end="url(#f23-arr)"/>
+          <text x="350" y="124" class="lbl" fill="#2f8f5b">ŷ_c</text>
+          <line x1="344" y1="218" x2="294" y2="266" stroke="#2347d9" stroke-width="1.4" stroke-dasharray="3 2" marker-end="url(#f23-arr)"/>
+          <text x="276" y="280" class="lbl">x̂_c</text>
+
+          <line x1="344" y1="338" x2="596" y2="338" class="stroke"/>
+          <line x1="344" y1="332" x2="344" y2="344" class="stroke"/>
+          <line x1="596" y1="332" x2="596" y2="344" class="stroke"/>
+          <text x="470" y="358" class="lbl" text-anchor="middle">z_c FROM DEPTH MAP</text>
+          <text x="470" y="372" class="lbl-soft" text-anchor="middle">WITHOUT z_c THE RAY HAS INFINITELY MANY 3D POINTS</text>
+        </g>
+
+        <!-- equations -->
+        <g transform="translate(660,188)">
+          <rect x="0" y="0" width="252" height="316" class="stroke" fill="#fffdf6"/>
+          <text x="14" y="24" class="lbl-big">INTRINSIC MATRIX M_INT</text>
+          <text x="14" y="38" class="lbl-soft">3×4 — APPLIES TO HOMOGENEOUS [x_c y_c z_c 1]ᵀ</text>
+          <text x="14" y="62" class="body">[ f_x   0    o_x   0 ]</text>
+          <text x="14" y="80" class="body">[  0   f_y   o_y   0 ]</text>
+          <text x="14" y="98" class="body">[  0    0     1    0 ]</text>
+          <line x1="14" y1="118" x2="238" y2="118" class="stroke-soft"/>
+          <text x="14" y="142" class="lbl">FORWARD PROJECTION</text>
+          <text x="14" y="164" class="body">[u·z_c, v·z_c, z_c]ᵀ = M_int · P̃</text>
+          <text x="14" y="184" class="body">u = f_x·x_c/z_c + o_x</text>
+          <text x="14" y="202" class="body">v = f_y·y_c/z_c + o_y</text>
+          <line x1="14" y1="220" x2="238" y2="220" class="stroke-soft"/>
+          <text x="14" y="244" class="lbl">INVERSE NEEDS DEPTH</text>
+          <text x="14" y="266" class="body">x_c = (u − o_x)·z_c / f_x</text>
+          <text x="14" y="284" class="body">y_c = (v − o_y)·z_c / f_y</text>
+          <text x="14" y="302" class="body">z_c = depth(u,v)</text>
+        </g>
+
+        <text x="24" y="530" class="lbl-soft">FIG. 2.3 · PINHOLE PROJECTION · §2.2.2</text>
+      </svg>

@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>4 · What worked — A visual reading of Kothiyal 2021</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<div class="linkbar">
+  <div class="group">
+    <span class="lbl-tag">Source</span>
+    <a href="https://jscholarship.library.jhu.edu/items/3b69ca6c-e302-4ad5-bf1e-c833dee928bd" target="_blank" rel="noopener">Paper · JScholarship<span class="arrow">↗</span></a>
+    <a href="https://www.linkedin.com/in/siddharth-kothiyal/" target="_blank" rel="noopener">Author · Siddharth Kothiyal<span class="arrow">↗</span></a>
+  </div>
+  <div class="group">
+    <span class="lbl-tag">Built by</span>
+    <a href="https://github.com/0xadvait" target="_blank" rel="noopener">GitHub · @0xadvait<span class="arrow">↗</span></a>
+    <a href="https://x.com/advait_jayant" target="_blank" rel="noopener">X · @advait_jayant<span class="arrow">↗</span></a>
+  </div>
+</div>
+
+<header class="topbar">
+  <div class="brand">A visual reading of <em>Perception Based UAV Path Planning for Fruit Harvesting</em></div>
+  <div class="crumbs">
+    <a href="index.html">Cover</a> ·
+    <a href="chapter-1.html">1 · The problem</a> ·
+    <a href="chapter-2.html">2 · Decoupled</a> ·
+    <a href="chapter-3.html">3 · Learning to plan</a> ·
+    <a href="chapter-4.html" class="current">4 · What worked</a> ·
+    <a href="terminology.html">Terminology</a>
+  </div>
+</header>
+
+<main class="shell">
+
+  <aside class="toc">
+    <h3>Chapter 4</h3>
+    <ol style="counter-reset: none;">
+      <li style="counter-increment: none;"><a href="#scoreboard">Scoreboard</a></li>
+      <li style="counter-increment: none;"><a href="#tradeoff">The real trade-off</a></li>
+      <li style="counter-increment: none;"><a href="#future">What comes next</a></li>
+      <li style="counter-increment: none;"><a href="#takeaway">Takeaway for you</a></li>
+    </ol>
+    <h3 style="margin-top:24px;">Other chapters</h3>
+    <ol>
+      <li><a href="chapter-1.html">The problem</a></li>
+      <li><a href="chapter-2.html">Decoupled pipeline</a></li>
+      <li><a href="chapter-3.html">Learning to plan</a></li>
+      <li><a href="chapter-4.html">What worked</a></li>
+    </ol>
+    <h3 style="margin-top:24px;"><a href="terminology.html" style="color:var(--blue);">Terminology →</a></h3>
+  </aside>
+
+  <article class="content">
+
+    <h1><span class="num">CHAPTER 4</span>What worked, what didn't</h1>
+    <p class="deck">
+      The thesis is a clean two-trial experiment. Each system wins where the other can't.
+    </p>
+
+    <!-- ============ §4.1 SCOREBOARD ============ -->
+    <h2 id="scoreboard"><span class="num">§4.1</span>The scoreboard</h2>
+
+    <figure>
+      <svg class="diag" viewBox="0 0 840 340" xmlns="http://www.w3.org/2000/svg">
+        <text x="24" y="30" class="lbl-big">HEAD-TO-HEAD SCOREBOARD</text>
+        <text x="24" y="46" class="lbl-soft">GREEN = STRONGER FIT · RED = LIMITATION</text>
+        <line x1="24" y1="60" x2="816" y2="60" class="stroke-soft"/>
+        <text x="254" y="86" class="lbl" text-anchor="middle">DECOUPLED · CHAPTER 2</text>
+        <text x="642" y="86" class="lbl" text-anchor="middle">END-TO-END · CHAPTER 3</text>
+        <line x1="420" y1="72" x2="420" y2="292" stroke="#e5e1d3" stroke-width="1"/>
+        <g transform="translate(36,108)">
+          <!-- Codex improvement: show total Chapter 2 successes, not only clean no-reset successes. -->
+          <text x="0" y="16" class="body">Goal visible at start</text><text x="220" y="16" class="lbl" style="fill:#2f8f5b;" text-anchor="middle">97/102 · 95.1%</text><text x="606" y="16" class="lbl" style="fill:#2f8f5b;" text-anchor="middle">85% SIM HEAD-ON</text>
+          <line x1="0" y1="30" x2="768" y2="30" class="grid"/>
+          <text x="0" y="48" class="body">Goal initially occluded</text><text x="220" y="48" class="lbl" style="fill:#c64545;" text-anchor="middle">CANNOT START</text><text x="606" y="48" class="lbl" style="fill:#2f8f5b;" text-anchor="middle">~70% SIM HARD CASES</text>
+          <line x1="0" y1="62" x2="768" y2="62" class="grid"/>
+          <text x="0" y="80" class="body">No goal present</text><text x="220" y="80" class="lbl" style="fill:#c64545;" text-anchor="middle">NO BEHAVIOUR</text><text x="606" y="80" class="lbl" style="fill:#2f8f5b;" text-anchor="middle">CIRCLES TREE</text>
+          <line x1="0" y1="94" x2="768" y2="94" class="grid"/>
+          <text x="0" y="112" class="body">Sim-to-real consistency</text><text x="220" y="112" class="lbl" style="fill:#2f8f5b;" text-anchor="middle">REAL DIRECT</text><text x="606" y="112" class="lbl" style="fill:#c64545;" text-anchor="middle">DEGRADES IN REAL TREE</text>
+          <line x1="0" y1="126" x2="768" y2="126" class="grid"/>
+          <text x="0" y="144" class="body">Failure interpretability</text><text x="220" y="144" class="lbl" style="fill:#2f8f5b;" text-anchor="middle">RANSAC, LOST VIEW</text><text x="606" y="144" class="lbl" style="fill:#c64545;" text-anchor="middle">OPAQUE POLICY</text>
+          <line x1="0" y1="158" x2="768" y2="158" class="grid"/>
+          <text x="0" y="176" class="body">Porting to another fruit</text><text x="220" y="176" class="lbl" style="fill:#c64545;" text-anchor="middle">RE-ENGINEER GEOMETRY</text><text x="606" y="176" class="lbl" style="fill:#2f8f5b;" text-anchor="middle">RETRAIN ON DATA</text>
+        </g>
+        <g transform="translate(54,304)"><line x1="0" y1="0" x2="732" y2="0" class="stroke-soft"/><text x="0" y="20" class="lbl-soft">FIG. 4.1 · HEAD-TO-HEAD · GREEN = WIN, RED = LOSS</text></g>
+      </svg>
+    </figure>
+
+
+    <!-- ============ §4.2 TRADEOFF ============ -->
+    <h2 id="tradeoff"><span class="num">§4.2</span>The real trade-off</h2>
+
+    <p>
+      It's tempting to read this as "old method wins on the bench, new method has interesting potential" and shrug. The actual lesson is sharper.
+    </p>
+
+    <p>
+      <!-- Codex improvement: preserve the thesis split between clean successes and reset-assisted successes. -->
+      The decoupled stack is the right answer for any task that fits inside its assumptions: <em>the goal is in view, the foliage is dense enough for plane fitting, the environment is bounded</em>. Inside that envelope it is essentially solved: 97/102 successful picks, with 84 clean and another 13 recovered by returning to a last-good pose.
+    </p>
+
+    <p>
+      The end-to-end network is the right answer for any task that <em>doesn't</em> fit inside those assumptions — initial occlusion, no map, having to search. It's worse on the easy task and better on the hard one. That's not failure; that's a different operating point on the same trade-off curve.
+    </p>
+
+    <div class="callout">
+      <span class="tag">The general lesson</span>
+      <p>
+        Decoupled pipelines optimise for <em>verifiability</em> — every module is testable, every interface inspectable. End-to-end networks optimise for <em>capability in the open world</em> — they pick up cues you didn't think to engineer. The choice between them isn't religious; it's a question of how rigid your environment actually is. For an artificial tree in a mocap room, decoupled wins. For a real orchard with wind, weather, and varied lighting, the learned approach is the only one with a path forward.
+      </p>
+    </div>
+
+
+    <!-- ============ §4.3 FUTURE ============ -->
+    <h2 id="future"><span class="num">§4.3</span>What comes next</h2>
+
+    <p>
+      The thesis itself flags three directions:
+    </p>
+
+    <ol style="line-height:1.7;">
+      <li><strong>Use the baseline as a data engine.</strong> The decoupled pipeline can run thousands of trials with consistent labels — feed those into the end-to-end network as additional supervision. This is the same idea as bootstrapping a learned policy with a working classical controller.</li>
+      <li><strong>Sim-to-real transfer.</strong> Domain randomisation, photorealistic rendering, or feature-level alignment so the simulation-trained model survives the gap to the real lighting and texture. Sadeghi et al. 2018 (RC-GAN) is the suggested starting point.</li>
+      <li><strong>Bigger / better world models.</strong> The thesis name-checks DreamerV2 — explicitly model the environment and let the network plan in latent space. The 2021 reading list; the 2026 equivalent is whatever VLA architecture is current (π0, OpenVLA, RT-2).</li>
+    </ol>
+
+
+    <!-- ============ §4.4 TAKEAWAY ============ -->
+    <h2 id="takeaway"><span class="num">§4.4</span>What this thesis teaches you</h2>
+
+    <p>
+      Read this thesis as one well-executed instance of the <strong>perception-action loop</strong> debate. Not for the orange-picking specifically — that hardware is dated, the network architecture is dated, and a 2026 implementation would replace half the components. Read it because it does, on a small scale, the exact thing that's at the centre of modern robotics:
+    </p>
+
+    <ul style="line-height:1.7;">
+      <li>Reduces a complex 3D physical task to a clean state-space + cost function (chapter 1).</li>
+      <li>Engineers a working solution by stacking known computer-vision and control primitives (chapter 2).</li>
+      <li>Replaces those primitives with a single learned function and shows what extra capability you buy with that move (chapter 3).</li>
+      <li>Honestly reports where the learned approach loses on the test bench (chapter 4).</li>
+    </ul>
+
+    <p>
+      Every modern paper in robotic manipulation — π0, RT-2, OpenVLA, the Figure VLAs — is doing some version of this same comparison at much larger scale. If you understand the tension between chapters 2 and 3 of this thesis, you understand the central architectural axis those papers debate.
+    </p>
+
+
+    <div class="callout">
+      <span class="tag">Suggested next step</span>
+      <p>
+        Pick one chapter to <em>do</em>, not just read. Easiest path given your background: open a Jupyter notebook, install <code>lerobot</code> from HuggingFace, and run a pretrained ALOHA policy in the bundled simulator. Then come back here and compare what's in the LeRobot codebase to chapter 3 of this thesis. Most of it will look familiar — they're solving the same problem at five years' distance.
+      </p>
+    </div>
+
+
+    <div class="pagenav">
+      <a href="chapter-3.html">← Previous<span class="nm">3 · Learning to plan</span></a>
+      <a href="terminology.html">Glossary →<span class="nm">Terminology</span></a>
+    </div>
+
+  </article>
+
+  <div class="margin-tag">
+    <span class="top">PERCEPTION-BASED UAV PATH PLANNING</span>
+    <span class="mid">CHAPTER 4 · WHAT WORKED</span>
+    <span class="bot">FIG. 4.1</span>
+  </div>
+
+</main>
+
+</body>
+</html>

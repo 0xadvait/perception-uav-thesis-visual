@@ -1,0 +1,890 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Terminology — A visual reading of Kothiyal 2021</title>
+<link rel="stylesheet" href="styles.css" />
+<style>
+  /* Glossary-specific styles */
+  .group {
+    margin-top: 56px;
+  }
+  .group:first-of-type { margin-top: 24px; }
+  .group h2 {
+    font-family: var(--serif);
+    font-size: 26px;
+    margin: 0 0 6px;
+    font-weight: 700;
+    letter-spacing: -0.005em;
+  }
+  .group h2 .num {
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--blue);
+    letter-spacing: 0.05em;
+    margin-right: 12px;
+    font-weight: 400;
+  }
+  .group .group-deck {
+    font-style: italic;
+    color: var(--ink-soft);
+    font-size: 14.5px;
+    margin: 0 0 18px;
+  }
+  .term {
+    border-top: 1px solid var(--rule);
+    padding: 18px 0 14px;
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 24px;
+  }
+  .term:last-child { border-bottom: 1px solid var(--rule); }
+  .term .name {
+    font-family: var(--serif);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1.3;
+    letter-spacing: -0.005em;
+  }
+  .term .name .alt {
+    display: block;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--ink-faint);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    font-weight: 400;
+    margin-top: 4px;
+  }
+  .term .name .where {
+    display: block;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--blue);
+    margin-top: 6px;
+    letter-spacing: 0.06em;
+  }
+  .term .body {
+    font-size: 14.5px;
+    line-height: 1.55;
+    color: var(--ink);
+  }
+  .term .body p { margin: 0 0 10px; }
+  .term .body p:last-child { margin: 0; }
+  .term .body .llm {
+    margin-top: 10px;
+    padding: 10px 14px;
+    background: var(--blue-tint);
+    border-left: 3px solid var(--blue);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+  .term .body .llm .tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--blue);
+    font-weight: 600;
+    margin-right: 8px;
+  }
+  @media (max-width: 700px) {
+    .term { grid-template-columns: 1fr; gap: 4px; }
+  }
+  .quickjump {
+    position: sticky;
+    top: 80px;
+    align-self: start;
+    font-family: var(--sans);
+    font-size: 12.5px;
+  }
+  .quickjump h3 {
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin: 0 0 8px;
+    font-weight: 600;
+  }
+  .quickjump ul {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 18px;
+  }
+  .quickjump li {
+    margin: 3px 0;
+  }
+  .quickjump li a {
+    color: var(--ink-soft);
+    font-weight: 500;
+  }
+</style>
+</head>
+<body>
+
+<div class="linkbar">
+  <div class="group">
+    <span class="lbl-tag">Source</span>
+    <a href="https://jscholarship.library.jhu.edu/items/3b69ca6c-e302-4ad5-bf1e-c833dee928bd" target="_blank" rel="noopener">Paper · JScholarship<span class="arrow">↗</span></a>
+    <a href="https://www.linkedin.com/in/siddharth-kothiyal/" target="_blank" rel="noopener">Author · Siddharth Kothiyal<span class="arrow">↗</span></a>
+  </div>
+  <div class="group">
+    <span class="lbl-tag">Built by</span>
+    <a href="https://github.com/0xadvait" target="_blank" rel="noopener">GitHub · @0xadvait<span class="arrow">↗</span></a>
+    <a href="https://x.com/advait_jayant" target="_blank" rel="noopener">X · @advait_jayant<span class="arrow">↗</span></a>
+  </div>
+</div>
+
+<header class="topbar">
+  <div class="brand">A visual reading of <em>Perception Based UAV Path Planning for Fruit Harvesting</em></div>
+  <div class="crumbs">
+    <a href="index.html">Cover</a> ·
+    <a href="chapter-1.html">1 · The problem</a> ·
+    <a href="chapter-2.html">2 · Decoupled</a> ·
+    <a href="chapter-3.html">3 · Learning to plan</a> ·
+    <a href="chapter-4.html">4 · What worked</a> ·
+    <a href="terminology.html" class="current">Terminology</a>
+  </div>
+</header>
+
+<main class="shell">
+
+  <aside class="quickjump">
+    <h3>Jump to</h3>
+    <ul>
+      <li><a href="#hardware">A · Hardware & flight</a></li>
+      <li><a href="#vision">B · Computer vision</a></li>
+      <li><a href="#geometry">C · 3D geometry</a></li>
+      <li><a href="#control">D · Control & planning</a></li>
+      <li><a href="#math">E · Math notation</a></li>
+      <li><a href="#learning">F · Learning</a></li>
+      <li><a href="#robotics">G · Robotics concepts</a></li>
+    </ul>
+    <h3 style="margin-top:24px;">Chapters</h3>
+    <ul>
+      <li><a href="chapter-1.html">1 · The problem</a></li>
+      <li><a href="chapter-2.html">2 · Decoupled</a></li>
+      <li><a href="chapter-3.html">3 · Learning to plan</a></li>
+      <li><a href="chapter-4.html">4 · What worked</a></li>
+    </ul>
+  </aside>
+
+  <article class="content">
+
+    <h1><span class="num">APPENDIX A</span>Terminology</h1>
+    <p class="deck">
+      Every piece of jargon in the thesis, in plain English. Where it helps, I've added an LLM-side analogue — same idea, different vocabulary.
+    </p>
+
+
+    <!-- ============ A · HARDWARE ============ -->
+    <section class="group" id="hardware">
+      <h2><span class="num">A</span>Hardware & flight</h2>
+      <p class="group-deck">The physical apparatus and what each component is responsible for.</p>
+
+      <div class="term">
+        <div class="name">UAV
+          <span class="alt">Unmanned Aerial Vehicle</span>
+          <span class="where">Used throughout</span>
+        </div>
+        <div class="body">
+          <p>Any flying robot without a human pilot on board. In this thesis it specifically means a quadcopter — four propellers, X-frame, hovering capable. "Drone" is the colloquial synonym.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Quadcopter / Quadrotor
+          <span class="where">§1, §2.3.1</span>
+        </div>
+        <div class="body">
+          <p>A four-rotor flying vehicle. Two rotors spin clockwise, two counter-clockwise; balancing their thrusts and torques produces movement in any direction. The DJI Matrice 100 used here is a development-platform quadrotor with an open SDK.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Aerial manipulator
+          <span class="where">§1, §1.2</span>
+        </div>
+        <div class="body">
+          <p>A flying robot with an arm. Combines the mobility of a UAV with the ability to interact with objects. In this paper the "arm" is just a fixed rod with a gripper — it doesn't articulate, which simplifies the dynamics enormously.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">End-effector
+          <span class="where">§1.2 onward</span>
+        </div>
+        <div class="body">
+          <p>The business end of a robot — whatever does the actual interaction with the world. Here it's the magnetic gripper at the tip of the arm. Mathematically it's a fixed pose offset from the drone body.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Gripper
+          <span class="where">§2.3.1</span>
+        </div>
+        <div class="body">
+          <p>The "hand." This thesis uses a passive magnetic gripper — no motors, just a strong magnet that latches when it gets close enough to the magnet on the orange. Cheap, reliable, no actuation complexity, but only works for objects you've prepared with magnets.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">BLDC motor
+          <span class="alt">Brushless Direct Current</span>
+          <span class="where">§1.2 (implicit)</span>
+        </div>
+        <div class="body">
+          <p>The motors that spin the rotors. Brushless = electronically commutated, more efficient than brushed motors. Drones use BLDCs for high power density and reliability.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">IMU
+          <span class="alt">Inertial Measurement Unit</span>
+          <span class="where">§1.2 (implicit, in DJI autopilot)</span>
+        </div>
+        <div class="body">
+          <p>A small chip combining accelerometers and gyroscopes. Reports linear acceleration and angular velocity. Used by the flight controller for attitude stabilisation; not directly used in this thesis, but it's running in the background to keep the drone level.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">RGB-D camera
+          <span class="where">§2.2 onward</span>
+        </div>
+        <div class="body">
+          <p>A camera that returns both colour (RGB) and depth (D) for every pixel. The thesis uses the Intel RealSense D435i, which gets depth from <em>active stereo</em>: it projects an invisible IR pattern, sees how the pattern is distorted by the geometry, and triangulates.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Depth map
+          <span class="where">§2.2.2</span>
+        </div>
+        <div class="body">
+          <p>An image where each pixel is a distance, not a colour. Same dimensions as the RGB image, aligned per-pixel. Crucial for going from 2D pixel coordinates back to 3D world coordinates (see <em>pinhole camera model</em>).</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Point cloud
+          <span class="where">§2.2.2</span>
+        </div>
+        <div class="body">
+          <p>A set of 3D points, usually obtained by projecting a depth map into space using camera intrinsics. The "shape of the world that the camera sees, in metres."</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Optitrack / motion capture
+          <span class="where">§2.3.1</span>
+        </div>
+        <div class="body">
+          <p>An infrared multi-camera system that tracks reflective markers stuck on the drone, returning sub-millimetre position estimates. Standard in robotics labs as a "ground truth" odometry source. It's not how a real-world drone would localise itself outdoors — only used here because the lab environment allows it.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Odometry
+          <span class="where">§2.3.1</span>
+        </div>
+        <div class="body">
+          <p>The robot's estimate of its own position and orientation over time. Could come from wheel encoders (ground robots), GPS, IMU integration, visual-inertial estimation, or — as here — external mocap. The thesis uses Optitrack because it's high-accuracy and the test environment is small enough.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">ROS
+          <span class="alt">Robot Operating System</span>
+          <span class="where">§2.3.1</span>
+        </div>
+        <div class="body">
+          <p>Not really an OS — a middleware framework where each algorithm runs as a "node," communicating via typed message topics. The thesis runs U-Net, projection, RANSAC, and trajectory generation as separate ROS nodes. ROS gives you free pub/sub, transforms, visualisation (RViz), and a huge ecosystem of pre-built nodes.</p>
+          <div class="llm">
+            <span class="tag">For the LLM person</span>
+            Think of it as a single-machine version of a service mesh: nodes publish to typed topics, others subscribe. The clean module boundaries in chapter 2 are largely <em>because</em> ROS encourages this style.
+          </div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ============ B · COMPUTER VISION ============ -->
+    <section class="group" id="vision">
+      <h2><span class="num">B</span>Computer vision</h2>
+      <p class="group-deck">Tools for turning images into structured information.</p>
+
+      <div class="term">
+        <div class="name">Semantic segmentation
+          <span class="where">§2.2.1</span>
+        </div>
+        <div class="body">
+          <p>Per-pixel classification: every pixel in an image gets a label ("orange," "leaf," "sky"). Different from <em>object detection</em>, which gives bounding boxes; closer to "drawing inside the lines" of every object. The thesis only has one class (orange vs not-orange) so it's binary segmentation.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Mask
+          <span class="where">§2.2.1</span>
+        </div>
+        <div class="body">
+          <p>The output of a segmentation network — a same-shape array of 0s and 1s (or class labels) over the input image. Tells you which pixels belong to the object you care about.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">CNN
+          <span class="alt">Convolutional Neural Network</span>
+          <span class="where">§1, §2</span>
+        </div>
+        <div class="body">
+          <p>A neural network whose layers slide small filters across the input — the standard tool for image-shaped data. Filters detect patterns (edges, then textures, then objects) at increasing scales of abstraction. CNNs were the dominant vision architecture from ~2012 to ~2020 before transformers caught up.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">U-Net
+          <span class="where">§2.2.1</span>
+        </div>
+        <div class="body">
+          <p>A specific CNN architecture for segmentation. Shape: a downsampling path (encoder) followed by a symmetric upsampling path (decoder), with <em>skip connections</em> jumping across that "U" shape. Skip connections feed early high-resolution features into the decoder so fine details aren't lost. Originally introduced for biomedical image segmentation in 2015.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Skip connection
+          <span class="where">§2.2.1, §3.2.1.1</span>
+        </div>
+        <div class="body">
+          <p>A direct wire that shortcuts past several layers of a network. Helps gradients flow during training (the original motivation in ResNet), and helps preserve information that would otherwise be destroyed by downsampling (the motivation in U-Net).</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">ResNet
+          <span class="alt">Residual Network</span>
+          <span class="where">§3.2.1.1</span>
+        </div>
+        <div class="body">
+          <p>A CNN family that uses skip connections to make very deep networks trainable. Each "block" adds the input of the block to its output: <span class="math-inline">y = F(x) + x</span>. ResNet8 is just a tiny version with 8 layers — the thesis uses it because the prediction task has limited training data.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">IoU
+          <span class="alt">Intersection over Union</span>
+          <span class="where">§2.2.1</span>
+        </div>
+        <div class="body">
+          <p>The standard metric for segmentation quality. <span class="math-inline">IoU = |A ∩ B| / |A ∪ B|</span> — how much your predicted mask overlaps with the ground-truth mask, divided by their combined area. 1.0 = perfect, 0 = no overlap. The thesis hits 93.49%, which for a single-class network on a clean dataset is solid.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">COCO
+          <span class="alt">Common Objects in Context</span>
+          <span class="where">§2.1</span>
+        </div>
+        <div class="body">
+          <p>A widely-used image dataset containing 150+ common object classes with segmentation labels. Standard "pretraining" target for vision networks. Mentioned here because U-Nets are often trained on COCO before fine-tuning to a specific task.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Bounding box
+          <span class="where">§2.1</span>
+        </div>
+        <div class="body">
+          <p>A rectangle around an object in an image. Used in object detection (faster but less precise than segmentation). The thesis discusses bounding-box methods (R-CNN) only to explain why it picked segmentation instead.</p>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ============ C · 3D GEOMETRY ============ -->
+    <section class="group" id="geometry">
+      <h2><span class="num">C</span>3D geometry & projection</h2>
+      <p class="group-deck">How pixels relate to physical metres.</p>
+
+      <div class="term">
+        <div class="name">Pinhole camera model
+          <span class="where">§2.2.2</span>
+        </div>
+        <div class="body">
+          <p>An idealised camera where all light passes through a single infinitesimal hole and lands on a flat sensor at distance <span class="math-inline">f</span> (the focal length). This model is what lets you write down the equation that maps 3D world points to 2D pixels — the foundation of every projection-based 3D reconstruction.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Focal length (f)
+          <span class="where">§2.2.2</span>
+        </div>
+        <div class="body">
+          <p>Distance between the pinhole and the image plane. Bigger <span class="math-inline">f</span> = narrower field of view (telephoto). Smaller <span class="math-inline">f</span> = wider field of view (wide-angle). Specified by the camera manufacturer; the thesis uses the values RealSense reports.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Intrinsic matrix (M_int)
+          <span class="where">§2.2.2 eq 2.2</span>
+        </div>
+        <div class="body">
+          <p>A 3×4 matrix that encodes the camera's internal geometry: focal lengths <span class="math-inline">f_x, f_y</span>, principal point offsets <span class="math-inline">o_x, o_y</span>. Multiply a 3D point in camera frame by this matrix to get the (homogeneous) pixel coordinate. Stored once per camera; doesn't change as the camera moves.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Extrinsic matrix
+          <span class="where">implied throughout §2</span>
+        </div>
+        <div class="body">
+          <p>The 4×4 matrix that describes where the camera is and which way it points, relative to some world frame. Combined with the intrinsics, you can map any world point to a pixel. The thesis treats the camera-to-body extrinsic as a known constant (mounted in a fixed position on the drone).</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Image plane
+          <span class="where">§2.2.2</span>
+        </div>
+        <div class="body">
+          <p>The flat surface inside the camera where the sensor lives. World points project onto it through the pinhole. Pixel coordinates <span class="math-inline">(u, v)</span> measure positions on this plane.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Camera frame
+          <span class="where">§2.2.2</span>
+        </div>
+        <div class="body">
+          <p>A coordinate system attached to the camera: origin at the pinhole, z-axis pointing forward (the way the camera is looking). All "depths" are along this z-axis.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Body frame / World frame
+          <span class="where">§1.2, §2.2.2</span>
+        </div>
+        <div class="body">
+          <p>"Body frame" rides with the drone — y-axis sideways, z-axis up, x-axis forward. "World frame" is fixed in the room. The same physical point has different coordinates in different frames; converting between them uses the rotation matrix R and position p — i.e. the pose g.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">RANSAC
+          <span class="alt">Random Sample Consensus</span>
+          <span class="where">§2.2.2</span>
+        </div>
+        <div class="body">
+          <p>A robust model-fitting algorithm. Repeatedly: pick a random small subset of the data, fit a model, count how many points agree (the "consensus"). The model with the most consensus wins, and outliers are ignored. The thesis uses RANSAC to fit a plane through the foliage point cloud — without RANSAC, branches sticking out would corrupt a least-squares fit.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Plane fitting
+          <span class="where">§2.2.2</span>
+        </div>
+        <div class="body">
+          <p>Finding the plane <span class="math-inline">ax + by + cz + d = 0</span> that best passes through a set of 3D points. The plane's normal vector <span class="math-inline">(a, b, c)</span> is the direction perpendicular to it — in this thesis, the direction the drone should fly in to "punch through" the foliage at the orange.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">SLAM
+          <span class="alt">Simultaneous Localisation And Mapping</span>
+          <span class="where">§1.1</span>
+        </div>
+        <div class="body">
+          <p>The classical robotics problem of building a map of an unknown environment <em>while</em> figuring out where you are inside it. The thesis specifically <em>avoids</em> SLAM because it doesn't scale well to large environments (the map gets too big). The whole thesis can be read as "what if we didn't need a map at all?"</p>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ============ D · CONTROL ============ -->
+    <section class="group" id="control">
+      <h2><span class="num">D</span>Control & planning</h2>
+      <p class="group-deck">How the drone actually moves.</p>
+
+      <div class="term">
+        <div class="name">PD controller
+          <span class="alt">Proportional-Derivative</span>
+          <span class="where">§2.2.3</span>
+        </div>
+        <div class="body">
+          <p>The simplest non-trivial controller. Output is <span class="math-inline">k_p · error + k_d · derivative_of_error</span>. The "P" term pushes towards the target; the "D" term damps oscillation. Used here as the inner loop tracking the reference trajectory. PID adds an "I" (integral) term for steady-state error — not used here.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">MPC
+          <span class="alt">Model Predictive Control</span>
+          <span class="where">§2 intro, §3.5</span>
+        </div>
+        <div class="body">
+          <p>Solve an optimal-control problem over a short future horizon, execute the first action, replan from the new state. Lets you handle constraints (obstacles, motor limits) explicitly inside the optimisation. The "expert" in chapter 3 is essentially an MPC running offline with full knowledge.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">DDP
+          <span class="alt">Differential Dynamic Programming</span>
+          <span class="where">§3.3.2</span>
+        </div>
+        <div class="body">
+          <p>A specific algorithm for solving non-linear optimal control. Cousin of LQR (Linear Quadratic Regulator) for non-linear dynamics. Iterative; converges quickly when initialised well. The thesis uses DDP both to compute expert trajectories for training (chapter 3) and to smooth the network's predicted waypoints into a feasible reference at inference time.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Trajectory generation
+          <span class="where">§2.2.3</span>
+        </div>
+        <div class="body">
+          <p>Computing a sequence of states the robot should visit over time. Distinct from <em>trajectory tracking</em>, which is the lower-level loop that actuates motors to follow that sequence.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Minimum-snap / polynomial-snap
+          <span class="where">§2 intro, §2.2.3</span>
+        </div>
+        <div class="body">
+          <p>A trajectory parameterised as a polynomial in time, chosen so that the fourth derivative of position (the "snap") is minimised. Smooths out trajectories so motors don't have to jerk. Standard for quadrotors thanks to a 2011 Mellinger & Kumar paper.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Differential flatness
+          <span class="where">§2.2.3</span>
+        </div>
+        <div class="body">
+          <p>A property some systems have where the entire state and control history can be recovered from a sufficiently smooth trajectory of certain "flat outputs" — for a quadrotor, position and yaw. This is what makes minimum-snap trajectories <em>actually flyable</em>: you can smoothly differentiate the path and read off motor commands.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Visual servoing
+          <span class="where">§2 title, §2.2</span>
+        </div>
+        <div class="body">
+          <p>A control technique where the controller's feedback comes <em>directly from camera measurements</em>, not from a separate state estimator. Two flavours: <em>position-based</em> (compute a 3D goal from images, then use standard control) and <em>image-based</em> (drive features in the image directly to target locations). The thesis uses position-based.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Closed-loop / open-loop
+          <span class="where">throughout</span>
+        </div>
+        <div class="body">
+          <p>Closed-loop = controller uses real-time feedback (e.g. camera) to correct itself. Open-loop = controller commits to a plan and executes it blindly. Both pipelines in this thesis are closed-loop, just with different feedback (decoupled: 6-DOF goal pose @ 8–9 Hz; end-to-end: full image-to-waypoints @ image rate).</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Goal pose / waypoint
+          <span class="where">throughout</span>
+        </div>
+        <div class="body">
+          <p>"Goal pose" = the final 6-DOF target the drone is trying to reach. "Waypoint" = an intermediate pose along the way. Chapter 2 communicates one goal pose between modules; chapter 3 communicates three waypoints (Δḡ₁, Δḡ₂, Δḡ₃) at 0.5 s spacing.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Receding horizon
+          <span class="where">§3 intro</span>
+        </div>
+        <div class="body">
+          <p>The strategy where you plan far into the future, but only execute the near-future portion before re-planning from the new state. Both pipelines do this — in chapter 3 the horizon is 3 × 0.5 s = 1.5 s of waypoints, but only the first ~0.5 s is executed before the network re-runs.</p>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ============ E · MATH NOTATION ============ -->
+    <section class="group" id="math">
+      <h2><span class="num">E</span>Math notation</h2>
+      <p class="group-deck">Decoder ring for the symbols in the thesis.</p>
+
+      <div class="term">
+        <div class="name">SO(3)
+          <span class="alt">Special Orthogonal group</span>
+          <span class="where">§1.2</span>
+        </div>
+        <div class="body">
+          <p>The set of 3D rotations. Equivalent to the set of 3×3 orthogonal matrices with determinant 1. When you see <span class="math-inline">R ∈ SO(3)</span>, read "R is a rotation."</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">SE(3)
+          <span class="alt">Special Euclidean group</span>
+          <span class="where">§1.2</span>
+        </div>
+        <div class="body">
+          <p>The set of rigid-body transformations in 3D — rotation + translation. A 4×4 matrix combining a rotation R and a position p. When you see <span class="math-inline">g ∈ SE(3)</span>, read "g is a 6-DOF pose."</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Rotation matrix R
+          <span class="where">§1.2 onward</span>
+        </div>
+        <div class="body">
+          <p>A 3×3 matrix that, when applied to a vector, rotates it. One of several equivalent ways to encode 3D orientation; the others are quaternions, Euler angles, axis-angle. Rotation matrices are nice because composition is just matrix multiplication.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Slerp
+          <span class="alt">Spherical Linear Interpolation</span>
+          <span class="where">§2.3.2 eq 2.4</span>
+        </div>
+        <div class="body">
+          <p>The right way to interpolate between two rotations. Linear interpolation of rotation matrices doesn't preserve orthogonality; slerp moves along the great-circle arc on the unit quaternion sphere. Used here in the alpha-decay smoothing of the goal pose estimate.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Yaw / Pitch / Roll
+          <span class="where">throughout</span>
+        </div>
+        <div class="body">
+          <p>The three independent rotations of a rigid body. Yaw = rotation about vertical axis (turning left/right). Pitch = rotation about sideways axis (nose up/down). Roll = rotation about forward axis (banking). For a quadrotor, yaw is independent of position; pitch and roll directly control horizontal motion.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Body-fixed velocity (v, ω)
+          <span class="where">§1.2</span>
+        </div>
+        <div class="body">
+          <p>"Body-fixed" means the velocity is expressed in the drone's own coordinate frame, not the world's. So <span class="math-inline">v</span> is "how fast forward the drone thinks it's moving," not "how fast east." Same for angular velocity ω.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Cost function J
+          <span class="where">§1.2 eq 1.3, §3.3.2</span>
+        </div>
+        <div class="body">
+          <p>The number being minimised by an optimal-control solver. Penalises deviation from desired state, control effort, obstacle collisions, etc. Each term has a weight (Q, R, b…) you tune to trade things off. Designing J well is most of the work in classical control.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Cross-entropy loss
+          <span class="where">§3.2.1.2</span>
+        </div>
+        <div class="body">
+          <p>The standard loss for classification — measures how surprised you are at the true label given the network's predicted distribution. Equivalent to maximum-likelihood under a categorical model. Used here on each of the 18 independent 100-class softmaxes.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Softmax
+          <span class="where">§3.2.1.1</span>
+        </div>
+        <div class="body">
+          <p>The function that turns a vector of logits into a probability distribution. Exponentiate each logit, normalise so they sum to 1. Used here at the network's output to give a proper probability over the 100 bins.</p>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ============ F · LEARNING ============ -->
+    <section class="group" id="learning">
+      <h2><span class="num">F</span>Learning</h2>
+      <p class="group-deck">How the network in chapter 3 actually gets trained.</p>
+
+      <div class="term">
+        <div class="name">Imitation learning
+          <span class="where">§3 intro</span>
+        </div>
+        <div class="body">
+          <p>Training a policy by mimicking an expert. You collect (state, action) pairs from someone (or something) doing the task correctly, and train a network to map state → action. No exploration, no reward signal, no failed attempts. The catch is you need an expert.</p>
+          <div class="llm">
+            <span class="tag">For the LLM person</span>
+            Direct analogue of supervised fine-tuning. The "expert demonstrations" are your labels.
+          </div>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Behaviour cloning
+          <span class="where">implied background</span>
+        </div>
+        <div class="body">
+          <p>The simplest form of imitation learning: just train on (state, action) pairs as a regression/classification problem. Famously brittle because of distribution shift — the model's small errors at inference time compound, leading it into states the expert never showed it. DAgger is the classic fix.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">DAgger
+          <span class="alt">Dataset Aggregation</span>
+          <span class="where">§3.3.4</span>
+        </div>
+        <div class="body">
+          <p>An algorithm that fixes behaviour cloning's compounding-error problem. Procedure: roll the student out, query the expert for what <em>it</em> would do at each visited state, add those new (state, expert action) pairs to the dataset, retrain. Repeat until the student stops drifting. Ross & Bagnell 2011.</p>
+          <div class="llm">
+            <span class="tag">For the LLM person</span>
+            This is the active-learning loop in dataset construction — collect data exactly where the model is wrong, fine-tune on it. Modern teleop pipelines use the same shape.
+          </div>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Reinforcement learning
+          <span class="where">§3 intro, §3.1</span>
+        </div>
+        <div class="body">
+          <p>Training a policy via trial-and-error from a reward signal. Mentioned in this thesis only to be rejected: real-world RL on a drone means real-world crashes. Imitation learning is preferred when a working expert exists.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Sim-to-real / Sim2Real
+          <span class="where">§3.4, §4.3</span>
+        </div>
+        <div class="body">
+          <p>The whole problem of transferring a policy trained in simulation to the real world. Hard because the simulator differs from reality in countless small ways (lighting, friction, sensor noise). Common fixes: domain randomisation (train across many randomised sims), domain adaptation (align features), photorealistic rendering. The thesis flags this as the dominant unsolved issue.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Data augmentation
+          <span class="where">§3.2.1.3</span>
+        </div>
+        <div class="body">
+          <p>Synthetically expanding the training set by applying transformations that should not change the label. The thesis flips images horizontally and mirrors the corresponding waypoint labels — effectively doubling the data for free.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Train / val / test split
+          <span class="where">§3.2.1.3</span>
+        </div>
+        <div class="body">
+          <p>The standard ML hygiene practice: train on most of the data, hold out a validation set for hyperparameter tuning, and a separate test set for final evaluation that nobody touches until the end. Thesis uses 70 / 15 / 15.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Regression vs classification
+          <span class="where">§3.2.1.2</span>
+        </div>
+        <div class="body">
+          <p>Two ways to make a network predict a number. Regression: predict the number directly, train with MSE. Classification: discretise the range into bins and predict which bin, train with cross-entropy. The thesis explicitly chooses classification because regression collapses to the mean of the dataset for this kind of multimodal target.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Logits
+          <span class="where">§3.2.1.1</span>
+        </div>
+        <div class="body">
+          <p>The raw outputs of a classification network <em>before</em> softmax. The "1800 logits" mentioned in chapter 3 means 1800 unnormalised scores, organised as 18 groups of 100, each group fed through softmax independently.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">DreamerV2
+          <span class="where">§4.3</span>
+        </div>
+        <div class="body">
+          <p>A 2020 model-based RL algorithm that learns a "world model" — a learned simulator — and plans inside it. Mentioned at the end as the suggested next step. The 2026 successors are Dreamer V3, world-model VLAs, and physical-foundation-models.</p>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- ============ G · ROBOTICS CONCEPTS ============ -->
+    <section class="group" id="robotics">
+      <h2><span class="num">G</span>Robotics concepts</h2>
+      <p class="group-deck">Higher-level ideas the thesis sits inside.</p>
+
+      <div class="term">
+        <div class="name">Perception
+          <span class="where">throughout</span>
+        </div>
+        <div class="body">
+          <p>The part of a robot that turns sensor inputs into useful structured information about the world. Vision, depth, IMU integration, etc. In a decoupled architecture, perception's output is a clean data structure (a mask, a point cloud, a goal pose). In an end-to-end one, there's no externally-visible "perception output" — the network's internal activations are doing the job.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Planning
+          <span class="where">throughout</span>
+        </div>
+        <div class="body">
+          <p>The part of a robot that decides what to <em>do</em> given some understanding of the world. Trajectory generation, search, decision-making. The thesis is fundamentally about <em>where to draw the boundary between perception and planning</em>.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Control
+          <span class="where">throughout</span>
+        </div>
+        <div class="body">
+          <p>The lowest-level loop that turns a desired trajectory into actual motor commands. Always closed-loop. The thesis abstracts this away — the DJI autopilot does the inner control loop on its own.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Forward kinematics
+          <span class="where">§1.2</span>
+        </div>
+        <div class="body">
+          <p>Given the joint angles of a robot, compute the pose of its end-effector. Just trigonometry plus matrix multiplication. The thesis's <span class="math-inline">φ(r)</span> is the forward-kinematic map from arm joint angle r to gripper pose. Because the arm is fixed, <span class="math-inline">φ(r)</span> is a constant.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Latent representation
+          <span class="where">§3 intro</span>
+        </div>
+        <div class="body">
+          <p>The internal activations of a network — the "embedding space" where it represents the world after compressing the input. Hidden, but the structure that determines what the network can express. End-to-end policies care about latent representations; decoupled ones replace them with hand-engineered data structures.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Feature
+          <span class="where">throughout</span>
+        </div>
+        <div class="body">
+          <p>Vague but important word. Sometimes means "a measurable property of the input" (a corner, an edge), sometimes "an activation channel inside a network." When the thesis says "latent visual patterns," it means features the network has learned to extract that the engineer didn't explicitly design for.</p>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="name">Receding-horizon planning
+          <span class="where">throughout</span>
+        </div>
+        <div class="body">
+          <p>See <em>receding horizon</em> in §D. The receding-horizon idea is universal in real-time robotics: plan for the near future, act for a moment, replan with new information. The horizon length and replanning frequency are the two design knobs.</p>
+        </div>
+      </div>
+    </section>
+
+
+    <div class="pagenav">
+      <a href="chapter-4.html">← Previous<span class="nm">4 · What worked</span></a>
+      <a href="index.html">Back to cover →<span class="nm">A visual reading</span></a>
+    </div>
+
+  </article>
+
+  <div class="margin-tag">
+    <span class="top">PERCEPTION-BASED UAV PATH PLANNING</span>
+    <span class="mid">APPENDIX A · TERMINOLOGY</span>
+    <span class="bot">A — G</span>
+  </div>
+
+</main>
+
+</body>
+</html>

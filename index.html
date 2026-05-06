@@ -1,0 +1,348 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Perception-Based UAV Path Planning for Fruit Harvesting — A Visual Reading</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<div class="linkbar">
+  <div class="group">
+    <span class="lbl-tag">Source</span>
+    <a href="https://jscholarship.library.jhu.edu/items/3b69ca6c-e302-4ad5-bf1e-c833dee928bd" target="_blank" rel="noopener">Paper · JScholarship<span class="arrow">↗</span></a>
+    <a href="https://www.linkedin.com/in/siddharth-kothiyal/" target="_blank" rel="noopener">Author · Siddharth Kothiyal<span class="arrow">↗</span></a>
+  </div>
+  <div class="group">
+    <span class="lbl-tag">Built by</span>
+    <a href="https://github.com/0xadvait" target="_blank" rel="noopener">GitHub · @0xadvait<span class="arrow">↗</span></a>
+    <a href="https://x.com/advait_jayant" target="_blank" rel="noopener">X · @advait_jayant<span class="arrow">↗</span></a>
+  </div>
+</div>
+
+<header class="topbar">
+  <div class="brand">A visual reading of <em>Perception Based UAV Path Planning for Fruit Harvesting</em></div>
+  <div class="crumbs">
+    <a href="index.html" class="current">Cover</a> ·
+    <a href="chapter-1.html">1 · The problem</a> ·
+    <a href="chapter-2.html">2 · Decoupled</a> ·
+    <a href="chapter-3.html">3 · Learning to plan</a> ·
+    <a href="chapter-4.html">4 · What worked</a> ·
+    <a href="terminology.html">Terminology</a>
+  </div>
+</header>
+
+<main class="shell">
+
+  <!-- ====== TOC ====== -->
+  <aside class="toc">
+    <h3>Contents</h3>
+    <ol>
+      <li><a href="chapter-1.html">The problem</a>
+        <ul>
+          <li><a href="chapter-1.html#scene">The scene</a></li>
+          <li><a href="chapter-1.html#anatomy">Anatomy of the drone</a></li>
+          <li><a href="chapter-1.html#state">Writing down a flying robot</a></li>
+          <li><a href="chapter-1.html#two-systems">Two systems, one task</a></li>
+        </ul>
+      </li>
+      <li><a href="chapter-2.html">Decoupled pipeline</a>
+        <ul>
+          <li><a href="chapter-2.html#pipeline">The five blocks</a></li>
+          <li><a href="chapter-2.html#segmentation">Segmenting the orange</a></li>
+          <li><a href="chapter-2.html#pinhole">From pixels to 3D</a></li>
+          <li><a href="chapter-2.html#ransac">Where to attack from</a></li>
+          <li><a href="chapter-2.html#pick">The two-step pick</a></li>
+          <li><a href="chapter-2.html#results">102 runs</a></li>
+        </ul>
+      </li>
+      <li><a href="chapter-3.html">Learning to plan</a>
+        <ul>
+          <li><a href="chapter-3.html#why">Why end-to-end</a></li>
+          <li><a href="chapter-3.html#pipeline">The closed loop</a></li>
+          <li><a href="chapter-3.html#bins">Action as classification</a></li>
+          <li><a href="chapter-3.html#expert">The MPC teacher</a></li>
+          <li><a href="chapter-3.html#dagger">DAgger</a></li>
+          <li><a href="chapter-3.html#emergent">Emergent exploration</a></li>
+        </ul>
+      </li>
+      <li><a href="chapter-4.html">What worked</a></li>
+    </ol>
+    <h3 style="margin-top:24px;"><a href="terminology.html" style="color:var(--blue);">Terminology →</a></h3>
+    <p style="font-size:12px; color:var(--ink-soft); line-height:1.5; margin: 4px 0 16px;">
+      Categorised glossary of every piece of jargon — from <em>SE(3)</em> to <em>DAgger</em> — in plain English.
+    </p>
+    <h3 style="margin-top:24px;">Source</h3>
+    <p style="font-size:12px; color:var(--ink-soft); line-height:1.5;">
+      Kothiyal, S. (2021). <em>Perception Based UAV Path Planning for Fruit Harvesting.</em> M.S.E. Thesis, Johns Hopkins University. Advised by Prof. Marin Kobilarov.
+    </p>
+  </aside>
+
+  <!-- ====== Cover ====== -->
+  <article class="content">
+
+    <div class="cover">
+
+      <div class="header-block">
+        <div>
+          <div style="font-family:var(--mono); font-size:11px; letter-spacing:0.12em; color:var(--ink-faint); text-transform:uppercase; margin-bottom:18px;">
+            A visual reading · v0.1 · 2026
+          </div>
+          <h1 class="title">Perception-<br/>Based UAV<br/>Path Planning</h1>
+          <div class="sub">
+            How do you fly a drone with an arm to a half-hidden orange in a fake tree, when you have nothing but a camera, a depth sensor, and onboard compute the size of a deck of cards?
+          </div>
+        </div>
+        <div class="meta">
+          Source · S. Kothiyal, JHU 2021<br/>
+          Advisor · Prof. Marin Kobilarov<br/>
+          Apparatus · DJI Matrice 100 + RealSense D435i<br/>
+          <!-- Codex improvement: count reset-assisted Chapter 2 trials as successes, matching Table 2.1. -->
+          Outcome · 97/102 with the classical pipe (84 clean + 13 reset); 77.5% in sim with the learned one
+        </div>
+      </div>
+
+      <!-- ===== HERO DIAGRAM: exploded isometric drone + scene inset ===== -->
+      <div class="heroart">
+        <svg class="diag" viewBox="0 0 920 760" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <pattern id="f0-hatch" width="8" height="8" patternUnits="userSpaceOnUse" patternTransform="rotate(-28)">
+              <line x1="0" y1="0" x2="0" y2="8" class="grid"/>
+            </pattern>
+          </defs>
+
+          <text x="28" y="30" class="lbl-big">FIG. 0 · EXPLODED ISOMETRIC AERIAL MANIPULATOR</text>
+          <text x="28" y="46" class="lbl-soft">DJI MATRICE 100 · REALSENSE D435i · FIXED 3D-PRINTED ARM · PASSIVE MAGNETIC GRIPPER</text>
+          <line x1="28" y1="58" x2="892" y2="58" class="stroke-soft"/>
+
+          <g opacity="0.52">
+            <path d="M 244 724 C 354 690 570 690 676 724 C 568 750 352 750 244 724 Z" fill="url(#f0-hatch)" stroke="#d8e0f5" stroke-width="0.7"/>
+            <line x1="420" y1="86" x2="420" y2="674" class="dashed"/>
+            <line x1="462" y1="82" x2="462" y2="680" class="dashed"/>
+            <line x1="504" y1="86" x2="504" y2="674" class="dashed"/>
+            <text x="306" y="700" class="lbl-soft">EXPLODED CENTERLINES</text>
+          </g>
+
+          <g opacity="0.46">
+            <line x1="306" y1="130" x2="318" y2="188" class="stroke-soft"/>
+            <line x1="614" y1="130" x2="602" y2="188" class="stroke-soft"/>
+            <line x1="330" y1="174" x2="352" y2="262" class="stroke-soft"/>
+            <line x1="590" y1="174" x2="568" y2="262" class="stroke-soft"/>
+            <line x1="344" y1="288" x2="360" y2="354" class="stroke-soft"/>
+            <line x1="576" y1="288" x2="560" y2="354" class="stroke-soft"/>
+            <line x1="438" y1="440" x2="438" y2="504" class="stroke-soft"/>
+            <line x1="486" y1="440" x2="486" y2="504" class="stroke-soft"/>
+          </g>
+
+          <!-- propeller layer -->
+          <g>
+            <g transform="translate(316,118)">
+              <path d="M -68 -4 C -44 -18 -17 -15 0 0 C -22 10 -46 13 -68 4 Z" class="stroke fill-soft"/>
+              <path d="M 68 4 C 44 18 17 15 0 0 C 22 -10 46 -13 68 -4 Z" class="stroke fill-soft"/>
+              <ellipse cx="0" cy="0" rx="14" ry="6" class="stroke" fill="#fffdf6"/>
+              <circle cx="0" cy="0" r="4" class="fill"/>
+            </g>
+            <g transform="translate(604,118)">
+              <path d="M -68 -4 C -44 -18 -17 -15 0 0 C -22 10 -46 13 -68 4 Z" class="stroke fill-soft"/>
+              <path d="M 68 4 C 44 18 17 15 0 0 C 22 -10 46 -13 68 -4 Z" class="stroke fill-soft"/>
+              <ellipse cx="0" cy="0" rx="14" ry="6" class="stroke" fill="#fffdf6"/>
+              <circle cx="0" cy="0" r="4" class="fill"/>
+            </g>
+            <g transform="translate(284,164)">
+              <path d="M -68 -4 C -44 -18 -17 -15 0 0 C -22 10 -46 13 -68 4 Z" class="stroke fill-soft"/>
+              <path d="M 68 4 C 44 18 17 15 0 0 C 22 -10 46 -13 68 -4 Z" class="stroke fill-soft"/>
+              <ellipse cx="0" cy="0" rx="14" ry="6" class="stroke" fill="#fffdf6"/>
+              <circle cx="0" cy="0" r="4" class="fill"/>
+            </g>
+            <g transform="translate(636,164)">
+              <path d="M -68 -4 C -44 -18 -17 -15 0 0 C -22 10 -46 13 -68 4 Z" class="stroke fill-soft"/>
+              <path d="M 68 4 C 44 18 17 15 0 0 C 22 -10 46 -13 68 -4 Z" class="stroke fill-soft"/>
+              <ellipse cx="0" cy="0" rx="14" ry="6" class="stroke" fill="#fffdf6"/>
+              <circle cx="0" cy="0" r="4" class="fill"/>
+            </g>
+            <line x1="224" y1="116" x2="204" y2="102" class="lead"/>
+            <text x="38" y="98" class="lbl">4× ROTOR DISKS</text>
+            <text x="38" y="112" class="lbl-soft">PROPS ABOVE MOTOR PLANE</text>
+          </g>
+
+          <!-- motor layer -->
+          <g>
+            <g>
+              <ellipse cx="326" cy="198" rx="18" ry="6" class="stroke fill-soft"/>
+              <path d="M 308 198 L 308 220 L 344 220 L 344 198" class="stroke" fill="#eef2ff"/>
+              <line x1="316" y1="201" x2="316" y2="218" class="grid"/>
+              <line x1="336" y1="201" x2="336" y2="218" class="grid"/>
+              <ellipse cx="326" cy="220" rx="18" ry="6" class="stroke" fill="#fffdf6"/>
+            </g>
+            <g>
+              <ellipse cx="594" cy="198" rx="18" ry="6" class="stroke fill-soft"/>
+              <path d="M 576 198 L 576 220 L 612 220 L 612 198" class="stroke" fill="#eef2ff"/>
+              <line x1="584" y1="201" x2="584" y2="218" class="grid"/>
+              <line x1="604" y1="201" x2="604" y2="218" class="grid"/>
+              <ellipse cx="594" cy="220" rx="18" ry="6" class="stroke" fill="#fffdf6"/>
+            </g>
+            <g>
+              <ellipse cx="352" cy="236" rx="18" ry="6" class="stroke fill-soft"/>
+              <path d="M 334 236 L 334 258 L 370 258 L 370 236" class="stroke" fill="#eef2ff"/>
+              <ellipse cx="352" cy="258" rx="18" ry="6" class="stroke" fill="#fffdf6"/>
+            </g>
+            <g>
+              <ellipse cx="568" cy="236" rx="18" ry="6" class="stroke fill-soft"/>
+              <path d="M 550 236 L 550 258 L 586 258 L 586 236" class="stroke" fill="#eef2ff"/>
+              <ellipse cx="568" cy="258" rx="18" ry="6" class="stroke" fill="#fffdf6"/>
+            </g>
+            <line x1="612" y1="205" x2="660" y2="190" class="lead"/>
+            <text x="668" y="186" class="lbl">MOTOR CANS</text>
+            <text x="668" y="200" class="lbl-soft">4 BLDC UNITS · THRUST + TORQUE</text>
+          </g>
+
+          <!-- chassis layer -->
+          <g>
+            <path d="M 298 300 L 454 254 L 626 300 L 470 350 Z" class="stroke fill-soft" stroke-width="1.5"/>
+            <path d="M 298 300 L 470 350 L 470 378 L 298 328 Z" class="stroke" fill="#e3e9ff"/>
+            <path d="M 470 350 L 626 300 L 626 328 L 470 378 Z" class="stroke" fill="#d8e1fb"/>
+            <path d="M 302 300 L 214 268" class="stroke-2"/>
+            <path d="M 622 300 L 706 268" class="stroke-2"/>
+            <path d="M 322 328 L 238 364" class="stroke-2"/>
+            <path d="M 600 328 L 682 364" class="stroke-2"/>
+            <rect x="374" y="292" width="72" height="30" class="stroke" fill="#fffdf6"/>
+            <line x1="382" y1="300" x2="438" y2="300" class="grid"/>
+            <line x1="382" y1="314" x2="438" y2="314" class="grid"/>
+            <text x="410" y="311" class="lbl-soft" text-anchor="middle">NUC</text>
+            <rect x="458" y="286" width="82" height="34" class="stroke" fill="#fffdf6"/>
+            <line x1="468" y1="294" x2="530" y2="294" class="grid"/>
+            <text x="499" y="307" class="lbl-soft" text-anchor="middle">BATTERY</text>
+            <circle cx="424" cy="270" r="7" class="stroke" fill="#fffdf6"/>
+            <circle cx="462" cy="265" r="7" class="stroke" fill="#fffdf6"/>
+            <circle cx="500" cy="270" r="7" class="stroke" fill="#fffdf6"/>
+            <line x1="414" y1="296" x2="228" y2="284" class="lead"/>
+            <text x="38" y="280" class="lbl">INTEL NUC i7</text>
+            <text x="38" y="294" class="lbl-soft">UBUNTU 14.04 · ROS ONBOARD</text>
+            <line x1="462" y1="265" x2="208" y2="236" class="lead"/>
+            <text x="38" y="232" class="lbl">OPTITRACK MARKERS</text>
+            <text x="38" y="246" class="lbl-soft">6-CAMERA MOCAP ODOMETRY</text>
+            <line x1="620" y1="318" x2="660" y2="328" class="lead"/>
+            <text x="668" y="324" class="lbl">MATRICE 100 FRAME</text>
+            <text x="668" y="338" class="lbl-soft">~3 KG QUADROTOR PLATFORM</text>
+          </g>
+
+          <!-- camera and lower plate -->
+          <g>
+            <path d="M 330 430 L 460 392 L 598 430 L 468 470 Z" class="stroke fill-soft" stroke-width="1.5"/>
+            <path d="M 468 470 L 598 430 L 598 452 L 468 492 Z" class="stroke" fill="#d8e1fb"/>
+            <path d="M 330 430 L 468 470 L 468 492 L 330 452 Z" class="stroke" fill="#e3e9ff"/>
+            <path d="M 520 436 L 574 420 L 616 434 L 562 452 Z" class="stroke" fill="#fffdf6"/>
+            <path d="M 562 452 L 616 434 L 616 464 L 562 482 Z" class="stroke" fill="#e3e9ff"/>
+            <path d="M 520 436 L 562 452 L 562 482 L 520 466 Z" class="stroke" fill="#eef2ff"/>
+            <circle cx="588" cy="454" r="6" stroke="#2347d9" fill="#fffdf6" stroke-width="1.2"/>
+            <circle cx="608" cy="448" r="6" stroke="#2347d9" fill="#fffdf6" stroke-width="1.2"/>
+            <circle cx="588" cy="454" r="2" class="fill"/>
+            <circle cx="608" cy="448" r="2" class="fill"/>
+            <rect x="534" y="456" width="18" height="8" class="stroke" fill="#fffdf6"/>
+            <line x1="614" y1="444" x2="660" y2="424" class="lead"/>
+            <text x="668" y="420" class="lbl">REALSENSE D435i</text>
+            <text x="668" y="434" class="lbl-soft">RGB + IR ACTIVE STEREO</text>
+            <text x="668" y="448" class="lbl-soft">640×480 @ 15 FPS</text>
+            <text x="668" y="462" class="lbl-soft">DEPTH 0.3–10 M</text>
+          </g>
+
+          <!-- fixed arm and gripper -->
+          <g>
+            <path d="M 442 510 L 482 498 L 482 606 L 442 618 Z" class="stroke fill-soft" stroke-width="1.5"/>
+            <path d="M 482 498 L 498 506 L 498 612 L 482 606 Z" class="stroke" fill="#d8e1fb"/>
+            <line x1="448" y1="542" x2="486" y2="530" class="stroke-soft"/>
+            <line x1="448" y1="572" x2="486" y2="560" class="stroke-soft"/>
+            <path d="M 425 626 L 453 618 L 453 648 L 425 658 Z" class="stroke fill-soft" stroke-width="1.5"/>
+            <path d="M 490 616 L 518 624 L 518 656 L 490 646 Z" class="stroke fill-soft" stroke-width="1.5"/>
+            <rect x="454" y="640" width="36" height="10" stroke="#c64545" fill="#fffdf6" stroke-width="1.2"/>
+            <line x1="500" y1="548" x2="660" y2="538" class="lead"/>
+            <text x="668" y="534" class="lbl">3D-PRINTED ARM</text>
+            <text x="668" y="548" class="lbl-soft">FIXED JOINT · r CONSTANT</text>
+            <text x="668" y="562" class="lbl-soft">NO ARM MOTION · ṙ = 0</text>
+            <line x1="454" y1="646" x2="226" y2="636" class="lead"/>
+            <text x="38" y="632" class="lbl">PASSIVE MAGNETIC GRIPPER</text>
+            <text x="38" y="646" class="lbl-soft">MAGNET + LSM303 FIELD JUMP</text>
+          </g>
+
+          <!-- target fruit -->
+          <g>
+            <circle cx="468" cy="694" r="20" fill="#f6802b" stroke="#c75d18" stroke-width="1.4"/>
+            <path d="M 466 675 C 468 664 478 662 484 668" stroke="#2f8f5b" fill="none" stroke-width="1.4"/>
+            <ellipse cx="461" cy="688" rx="5" ry="3" fill="#fffdf6" opacity="0.65"/>
+            <rect x="458" y="672" width="18" height="6" stroke="#c64545" fill="#fffdf6" stroke-width="1"/>
+            <line x1="489" y1="692" x2="660" y2="672" class="lead"/>
+            <text x="668" y="668" class="lbl">MAGNET-EQUIPPED ORANGE</text>
+            <text x="668" y="682" class="lbl-soft">DETACHABLE TARGET</text>
+            <text x="668" y="696" class="lbl-soft">REPOSITIONED EACH TRIAL</text>
+          </g>
+
+          <text x="892" y="742" class="lbl-soft" text-anchor="end">FIG. 0 · APPARATUS · EXPLODED</text>
+        </svg>
+      </div>
+    </div>
+
+    <h2 style="margin-top:32px;">What this is</h2>
+    <p>
+      Siddharth Kothiyal's master's thesis at Johns Hopkins teaches a flying robot to pick fruit. It does this twice — once with a stack of classical computer-vision and optimal-control parts bolted together, and once with a single neural network trained to imitate an expert. The two attempts make a clean compare-and-contrast for the central question of modern robotics: <em>where do you draw the line between the perception system and the planner?</em>
+    </p>
+    <p>
+      I've redrawn the thesis from scratch as a four-chapter visual reader, so you can absorb the geometry, the network architecture, and the result of each ablation without re-reading 67 pages of LaTeX. The original is excellent; this is just an on-ramp.
+    </p>
+
+    <div class="callout">
+      <span class="tag">For the LLM person</span>
+      <p>You will recognize most of the machinery here. The perception network is a U-Net trained on COCO-style masks. The end-to-end controller is a small ResNet that emits a discrete distribution over a binned action space — i.e. the robot version of a tokenized output head. The training procedure (DAgger) is the active-learning loop where you collect data exactly where the policy is wrong and fine-tune on it. The hard part isn't the ML; it's the <em>geometry</em> tying camera pixels to world coordinates. That's chapter 2.</p>
+    </div>
+
+    <h2>Read in order</h2>
+    <p>
+      Each chapter takes ~10 minutes. Diagrams are inline SVG — open them in any browser, no build step.
+    </p>
+
+    <div class="chapters">
+      <a class="chapter-card" href="chapter-1.html">
+        <div class="num">Chapter 1</div>
+        <div class="name">The problem</div>
+        <div class="blurb">A drone, an arm, a fake tree, and a magnetic orange. The state vector, the goal, and the two ways the thesis tries to solve it.</div>
+      </a>
+      <a class="chapter-card" href="chapter-2.html">
+        <div class="num">Chapter 2</div>
+        <div class="name">The decoupled pipeline</div>
+        <div class="blurb">U-Net segmentation, pinhole projection, RANSAC plane fitting for the approach angle, and a polynomial-snap trajectory chased by a PD controller.</div>
+      </a>
+      <a class="chapter-card" href="chapter-3.html">
+        <div class="num">Chapter 3</div>
+        <div class="name">Learning to plan</div>
+        <div class="blurb">A small ResNet predicts three future waypoints as a 1800-dimensional softmax. Trained on MPC demos with DAgger. Out of the box, it learns to circle a tree.</div>
+      </a>
+      <a class="chapter-card" href="chapter-4.html">
+        <div class="num">Chapter 4</div>
+        <div class="name">What worked, what didn't</div>
+        <div class="blurb">The classical stack ate the lunch on the test bench. The learned one ate the lunch on tasks the classical stack literally cannot do. Sim-to-real is the open wound.</div>
+      </a>
+      <a class="chapter-card" href="terminology.html" style="grid-column: span 2; background: var(--blue-tint); border-color: var(--blue-soft);">
+        <div class="num">Appendix A</div>
+        <div class="name">Terminology</div>
+        <div class="blurb">Every term from the thesis explained in plain English — UAV, SE(3), RANSAC, U-Net, MPC, DDP, DAgger, Sim2Real, plus LLM-side analogues for each. Open this in a second tab while you read.</div>
+      </a>
+    </div>
+
+    <div class="pagenav">
+      <span></span>
+      <a href="chapter-1.html">Next →<span class="nm">1 · The problem</span></a>
+    </div>
+
+  </article>
+
+  <!-- right margin tag -->
+  <div class="margin-tag">
+    <span class="top">PERCEPTION-BASED UAV PATH PLANNING</span>
+    <span class="mid">COVER · A VISUAL READING</span>
+    <span class="bot">2026 · v0.1</span>
+  </div>
+
+</main>
+
+</body>
+</html>

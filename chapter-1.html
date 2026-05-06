@@ -1,0 +1,458 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>1 · The problem — A visual reading of Kothiyal 2021</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<div class="linkbar">
+  <div class="group">
+    <span class="lbl-tag">Source</span>
+    <a href="https://jscholarship.library.jhu.edu/items/3b69ca6c-e302-4ad5-bf1e-c833dee928bd" target="_blank" rel="noopener">Paper · JScholarship<span class="arrow">↗</span></a>
+    <a href="https://www.linkedin.com/in/siddharth-kothiyal/" target="_blank" rel="noopener">Author · Siddharth Kothiyal<span class="arrow">↗</span></a>
+  </div>
+  <div class="group">
+    <span class="lbl-tag">Built by</span>
+    <a href="https://github.com/0xadvait" target="_blank" rel="noopener">GitHub · @0xadvait<span class="arrow">↗</span></a>
+    <a href="https://x.com/advait_jayant" target="_blank" rel="noopener">X · @advait_jayant<span class="arrow">↗</span></a>
+  </div>
+</div>
+
+<header class="topbar">
+  <div class="brand">A visual reading of <em>Perception Based UAV Path Planning for Fruit Harvesting</em></div>
+  <div class="crumbs">
+    <a href="index.html">Cover</a> ·
+    <a href="chapter-1.html" class="current">1 · The problem</a> ·
+    <a href="chapter-2.html">2 · Decoupled</a> ·
+    <a href="chapter-3.html">3 · Learning to plan</a> ·
+    <a href="chapter-4.html">4 · What worked</a> ·
+    <a href="terminology.html">Terminology</a>
+  </div>
+</header>
+
+<main class="shell">
+
+  <aside class="toc">
+    <h3>Chapter 1</h3>
+    <ol style="counter-reset: none;">
+      <li style="counter-increment: none;"><a href="#scene">The scene</a></li>
+      <li style="counter-increment: none;"><a href="#anatomy">Anatomy of the drone</a></li>
+      <li style="counter-increment: none;"><a href="#state">Writing down a flying robot</a></li>
+      <li style="counter-increment: none;"><a href="#two-systems">Two systems, one task</a></li>
+    </ol>
+    <h3 style="margin-top:24px;">Other chapters</h3>
+    <ol>
+      <li><a href="chapter-1.html">The problem</a></li>
+      <li><a href="chapter-2.html">Decoupled pipeline</a></li>
+      <li><a href="chapter-3.html">Learning to plan</a></li>
+      <li><a href="chapter-4.html">What worked</a></li>
+    </ol>
+    <h3 style="margin-top:24px;"><a href="terminology.html" style="color:var(--blue);">Terminology →</a></h3>
+  </aside>
+
+  <article class="content">
+
+    <h1><span class="num">CHAPTER 1</span>The problem</h1>
+    <p class="deck">
+      A drone with an arm, a fake orange tree, a magnetic gripper, and the question every autonomous robot eventually has to answer: <em>where is my goal, and how do I get there without running into anything?</em>
+    </p>
+
+    <!-- ============== SECTION 1: SCENE ============== -->
+    <h2 id="scene"><span class="num">§1.1</span>The scene</h2>
+
+    <p>
+      The lab at JHU is set up with an artificial orange tree (one with detachable, magnet-equipped oranges that can be relocated between trials) and a quadcopter that starts <strong>2–4 metres away</strong> at a height of <strong>0.75–2.5 m</strong>. The orange's location, and the angle from which it can be plucked, varies every run — the relative yaw between drone and best approach swings ±75°. The drone has to find the orange, decide which way to come in, fly there without crashing into the tree, and snap the magnet onto the orange.
+    </p>
+
+    <figure>
+      <svg class="diag" viewBox="0 0 940 420" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="f11-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 Z" class="fill"/>
+          </marker>
+        </defs>
+
+        <line x1="34" y1="354" x2="906" y2="354" class="dashed"/>
+        <text x="36" y="374" class="lbl-soft">GROUND z = 0</text>
+
+        <line x1="146" y1="334" x2="648" y2="334" class="stroke"/>
+        <line x1="146" y1="328" x2="146" y2="340" class="stroke"/>
+        <line x1="648" y1="328" x2="648" y2="340" class="stroke"/>
+        <text x="397" y="326" class="lbl" text-anchor="middle">2–4 M START ANNULUS</text>
+
+        <line x1="96" y1="164" x2="96" y2="354" class="stroke"/>
+        <line x1="88" y1="164" x2="104" y2="164" class="stroke"/>
+        <line x1="88" y1="354" x2="104" y2="354" class="stroke"/>
+        <text x="90" y="254" class="lbl" text-anchor="end">0.75–2.5 M</text>
+
+        <!-- 3/4 isometric quadrotor -->
+        <g transform="translate(116,130)">
+          <path d="M 54 42 L 98 22 L 146 48 L 102 72 Z" class="stroke fill-soft" stroke-width="1.5"/>
+          <path d="M 102 72 L 146 48 L 146 66 L 102 90 Z" class="stroke" fill="#dfe7ff"/>
+          <path d="M 54 42 L 102 72 L 102 90 L 54 60 Z" class="stroke" fill="#edf1ff"/>
+          <line x1="96" y1="46" x2="36" y2="24" class="stroke-2"/>
+          <line x1="104" y1="50" x2="172" y2="22" class="stroke-2"/>
+          <line x1="96" y1="62" x2="30" y2="92" class="stroke-2"/>
+          <line x1="110" y1="64" x2="182" y2="96" class="stroke-2"/>
+          <ellipse cx="30" cy="22" rx="24" ry="7" class="stroke fill-soft"/>
+          <ellipse cx="176" cy="20" rx="24" ry="7" class="stroke fill-soft"/>
+          <ellipse cx="24" cy="96" rx="24" ry="7" class="stroke fill-soft"/>
+          <ellipse cx="188" cy="100" rx="24" ry="7" class="stroke fill-soft"/>
+          <circle cx="30" cy="22" r="4" class="fill"/>
+          <circle cx="176" cy="20" r="4" class="fill"/>
+          <circle cx="24" cy="96" r="4" class="fill"/>
+          <circle cx="188" cy="100" r="4" class="fill"/>
+          <path d="M 124 58 L 154 48 L 172 56 L 142 68 Z" class="stroke" fill="#fffdf6"/>
+          <circle cx="158" cy="58" r="4" class="fill"/>
+          <path d="M 96 86 L 106 90 L 106 128 L 96 124 Z" class="stroke-2" fill="#eef2ff"/>
+          <path d="M 84 132 L 100 126 L 100 144 L 84 150 Z" class="stroke" fill="#eef2ff"/>
+          <path d="M 112 126 L 130 132 L 130 150 L 112 144 Z" class="stroke" fill="#eef2ff"/>
+          <rect x="100" y="142" width="16" height="7" stroke="#c64545" fill="#fffdf6" stroke-width="1"/>
+        </g>
+        <line x1="188" y1="138" x2="238" y2="82" class="lead"/>
+        <text x="32" y="72" class="lbl">DJI MATRICE 100</text>
+        <text x="32" y="86" class="lbl-soft">4 ROTORS · FIXED MAGNETIC ARM</text>
+
+        <!-- tree with trunk, branches, discrete foliage clusters -->
+        <g transform="translate(560,90)">
+          <path d="M 86 226 C 92 184 94 142 86 104 L 112 104 C 104 146 108 188 118 226 Z" class="stroke" fill="#fffdf6" stroke-width="1.4"/>
+          <path d="M 98 138 C 70 126 48 112 32 92" class="stroke-2"/>
+          <path d="M 100 128 C 132 116 154 96 172 72" class="stroke-2"/>
+          <path d="M 100 166 C 64 162 38 148 18 130" class="stroke"/>
+          <path d="M 104 160 C 140 152 168 138 192 118" class="stroke"/>
+          <path d="M 96 110 C 86 86 80 64 74 38" class="stroke"/>
+          <g opacity="0.98">
+            <ellipse cx="58" cy="52" rx="36" ry="24" class="stroke fill-green" opacity="0.18"/>
+            <ellipse cx="112" cy="36" rx="42" ry="28" class="stroke fill-green" opacity="0.20"/>
+            <ellipse cx="164" cy="62" rx="38" ry="26" class="stroke fill-green" opacity="0.18"/>
+            <ellipse cx="34" cy="108" rx="34" ry="26" class="stroke fill-green" opacity="0.20"/>
+            <ellipse cx="92" cy="96" rx="44" ry="30" class="stroke fill-green" opacity="0.18"/>
+            <ellipse cx="154" cy="112" rx="46" ry="30" class="stroke fill-green" opacity="0.20"/>
+            <ellipse cx="74" cy="154" rx="42" ry="28" class="stroke fill-green" opacity="0.18"/>
+            <ellipse cx="134" cy="158" rx="38" ry="26" class="stroke fill-green" opacity="0.20"/>
+          </g>
+          <g opacity="0.45">
+            <path d="M 34 107 C 48 96 60 93 76 96" class="stroke-soft"/>
+            <path d="M 66 53 C 82 42 96 42 116 48" class="stroke-soft"/>
+            <path d="M 130 116 C 148 102 166 101 188 110" class="stroke-soft"/>
+            <path d="M 68 156 C 90 144 112 145 132 158" class="stroke-soft"/>
+          </g>
+          <circle cx="64" cy="118" r="12" fill="#f6802b" stroke="#c75d18" stroke-width="1.3"/>
+          <path d="M 63 106 C 66 98 72 98 78 102" stroke="#2f8f5b" fill="none" stroke-width="1.2"/>
+        </g>
+
+        <path d="M 300 184 C 422 88 548 118 626 198" stroke="#5b7cf5" fill="none" stroke-width="1.6" stroke-dasharray="4 3" marker-end="url(#f11-arr)"/>
+        <text x="422" y="102" class="lbl-soft" text-anchor="middle" style="fill:#5b7cf5;">DESIRED TRAJECTORY x̄(·)</text>
+
+        <line x1="625" y1="208" x2="724" y2="190" class="lead"/>
+        <text x="730" y="186" class="lbl">ORANGE</text>
+        <text x="730" y="200" class="lbl-soft">VISIBLE AT t₀</text>
+        <text x="730" y="214" class="lbl-soft">PARTLY OCCLUDED</text>
+        <line x1="742" y1="152" x2="806" y2="132" class="lead"/>
+        <text x="636" y="98" class="lbl">ARTIFICIAL TREE</text>
+        <text x="636" y="112" class="lbl-soft">TRUNK · BRANCHES</text>
+        <text x="636" y="126" class="lbl-soft">DISCRETE LEAF CLUSTERS</text>
+
+        <path d="M 292 196 A 66 66 0 0 1 338 154" stroke="#c64545" fill="none" stroke-width="1" stroke-dasharray="3 3" marker-end="url(#f11-arr)"/>
+        <text x="326" y="212" class="lbl" style="fill:#c64545;">±75° APPROACH YAW</text>
+
+        <text x="24" y="402" class="lbl-soft">FIG. 1.1 · TASK SETUP</text>
+      </svg>
+      <figcaption>
+        <span class="figno">FIG. 1.1</span> Test setup, after Kothiyal §2.3.1. The drone starts somewhere on a 2–4 m annulus around the tree at 0.75–2.5 m altitude, with the orange visible somewhere on the foliage. The relative yaw between the drone's initial heading and the best approach to the orange ranges from −75° to +75°.
+        <span class="desc">In Chapter 2 the orange is always at least partially in view at t₀. In Chapter 3 the trained policy can also handle starting with the orange behind a leaf, behind the tree, or — emergently — not present at all.</span>
+      </figcaption>
+    </figure>
+
+
+    <!-- ============== SECTION 2: ANATOMY ============== -->
+    <h2 id="anatomy"><span class="num">§1.2</span>Anatomy of the apparatus</h2>
+
+    <p>
+      The drone is a <strong>DJI Matrice 100</strong> (which still uses its built-in flight controller for low-level stabilisation), instrumented with three things the thesis cares about: a vision sensor, a compute brain, and an actuator.
+    </p>
+
+    <figure>
+      <svg class="diag" viewBox="0 0 840 390" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="f12-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 Z" class="fill"/>
+          </marker>
+        </defs>
+
+        <text x="24" y="28" class="lbl-big">AERIAL MANIPULATOR HARDWARE</text>
+        <text x="24" y="44" class="lbl-soft">MATRICE 100 + REALSENSE + NUC + FIXED 3D-PRINTED MAGNETIC ARM</text>
+        <line x1="24" y1="56" x2="816" y2="56" class="stroke-soft"/>
+
+        <g transform="translate(260,96)">
+          <path d="M 78 96 L 174 54 L 280 104 L 184 150 Z" class="stroke fill-soft" stroke-width="1.5"/>
+          <path d="M 184 150 L 280 104 L 280 136 L 184 184 Z" class="stroke" fill="#dce5ff"/>
+          <path d="M 78 96 L 184 150 L 184 184 L 78 128 Z" class="stroke" fill="#eef2ff"/>
+          <line x1="170" y1="92" x2="50" y2="48" class="stroke-2"/>
+          <line x1="192" y1="96" x2="318" y2="46" class="stroke-2"/>
+          <line x1="164" y1="126" x2="42" y2="178" class="stroke-2"/>
+          <line x1="204" y1="130" x2="330" y2="186" class="stroke-2"/>
+          <ellipse cx="42" cy="44" rx="40" ry="10" class="stroke fill-soft"/>
+          <ellipse cx="326" cy="42" rx="40" ry="10" class="stroke fill-soft"/>
+          <ellipse cx="36" cy="182" rx="40" ry="10" class="stroke fill-soft"/>
+          <ellipse cx="338" cy="190" rx="40" ry="10" class="stroke fill-soft"/>
+          <circle cx="42" cy="44" r="6" class="fill"/>
+          <circle cx="326" cy="42" r="6" class="fill"/>
+          <circle cx="36" cy="182" r="6" class="fill"/>
+          <circle cx="338" cy="190" r="6" class="fill"/>
+          <rect x="104" y="105" width="54" height="30" class="stroke" fill="#fffdf6"/>
+          <text x="131" y="124" class="lbl-soft" text-anchor="middle">NUC</text>
+          <rect x="164" y="94" width="70" height="34" class="stroke" fill="#fffdf6"/>
+          <text x="199" y="116" class="lbl-soft" text-anchor="middle">BATTERY</text>
+          <path d="M 238 120 L 296 100 L 334 116 L 276 138 Z" class="stroke" fill="#fffdf6"/>
+          <path d="M 276 138 L 334 116 L 334 146 L 276 168 Z" class="stroke" fill="#dce5ff"/>
+          <circle cx="304" cy="138" r="5" class="fill"/>
+          <circle cx="322" cy="132" r="5" class="fill"/>
+          <circle cx="154" cy="72" r="5" class="stroke" fill="#fffdf6"/>
+          <circle cx="184" cy="66" r="5" class="stroke" fill="#fffdf6"/>
+          <circle cx="216" cy="72" r="5" class="stroke" fill="#fffdf6"/>
+          <path d="M 176 184 L 188 188 L 188 258 L 176 254 Z" class="stroke-2" fill="#eef2ff"/>
+          <path d="M 156 264 L 178 254 L 178 282 L 156 292 Z" class="stroke" fill="#eef2ff"/>
+          <path d="M 194 254 L 220 264 L 220 292 L 194 282 Z" class="stroke" fill="#eef2ff"/>
+          <rect x="178" y="278" width="18" height="8" stroke="#c64545" fill="#fffdf6" stroke-width="1.1"/>
+          <line x1="186" y1="128" x2="232" y2="128" stroke="#c64545" stroke-width="1.4" marker-end="url(#f12-arr)"/>
+          <line x1="186" y1="128" x2="186" y2="90" stroke="#2f8f5b" stroke-width="1.4" marker-end="url(#f12-arr)"/>
+          <line x1="186" y1="128" x2="156" y2="150" stroke="#2347d9" stroke-width="1.4" stroke-dasharray="3 2" marker-end="url(#f12-arr)"/>
+          <text x="237" y="132" class="lbl" style="fill:#c64545;">x_b</text>
+          <text x="190" y="86" class="lbl" style="fill:#2f8f5b;">z_b</text>
+          <text x="132" y="158" class="lbl">y_b</text>
+        </g>
+
+        <line x1="302" y1="136" x2="338" y2="104" class="lead"/>
+        <text x="28" y="100" class="lbl">4× BLDC ROTORS</text>
+        <text x="28" y="114" class="lbl-soft">DJI AUTOPILOT STABILISES LOW-LEVEL FLIGHT</text>
+        <line x1="414" y1="168" x2="290" y2="166" class="lead"/>
+        <text x="28" y="162" class="lbl">INTEL NUC</text>
+        <text x="28" y="176" class="lbl-soft">ROS ONBOARD · GPU INFERENCE OFFBOARD</text>
+        <line x1="446" y1="162" x2="708" y2="118" class="lead"/>
+        <text x="714" y="114" class="lbl">REALSENSE D435i</text>
+        <text x="714" y="128" class="lbl-soft">RGB + IR STEREO</text>
+        <text x="714" y="142" class="lbl-soft">DEPTH 0.3–10 M</text>
+        <line x1="450" y1="276" x2="708" y2="238" class="lead"/>
+        <text x="714" y="234" class="lbl">FIXED ARM</text>
+        <text x="714" y="248" class="lbl-soft">3D PRINTED</text>
+        <text x="714" y="262" class="lbl-soft">r CONST · ṙ = 0</text>
+        <line x1="448" y1="376" x2="306" y2="314" class="lead"/>
+        <text x="28" y="310" class="lbl">MAGNETIC GRIPPER</text>
+        <text x="28" y="324" class="lbl-soft">PASSIVE MAGNET + LSM303 DETECTION</text>
+
+        <text x="24" y="372" class="lbl-soft">FIG. 1.2 · APPARATUS · AFTER §2.3.1</text>
+      </svg>
+      <figcaption>
+        <span class="figno">FIG. 1.2</span> The aerial manipulator. Note the arm joint is fixed (<span class="math-inline">ṙ = 0</span>) — the drone <em>flies</em> the gripper into position rather than moving an articulated arm. This simplification lets the trajectory generator treat the whole vehicle as a single rigid body.
+      </figcaption>
+    </figure>
+
+    <div class="callout">
+      <span class="tag">Why this matters for the algorithm</span>
+      <p>
+        The fixed arm is a <em>modelling</em> choice. Because <span class="math-inline">ṙ = 0</span>, the end-effector pose <span class="math-inline">g_e(q) = g · φ(r)</span> is just a fixed offset from the body frame. So every "where is the gripper" question collapses to "where is the body, plus a constant transform." This is what makes the rest of the math tractable in 67 pages.
+      </p>
+    </div>
+
+
+    <!-- ============== SECTION 3: STATE ============== -->
+    <h2 id="state"><span class="num">§1.3</span>Writing the robot down</h2>
+
+    <p>
+      Before any planner can do anything useful, you have to commit to a vocabulary for the state. The thesis uses the standard rigid-body description for a quadrotor:
+    </p>
+
+    <div class="eq">
+      <strong>x</strong> = (<strong>p</strong>, <strong>R</strong>, <strong>v</strong>, <strong>ω</strong>) &nbsp; ∈ ℝ³ × SO(3) × ℝ³ × ℝ³
+      <span class="lbl">EQ 1.1</span>
+    </div>
+
+    <p>
+      Position <strong>p</strong> in the world frame, orientation <strong>R</strong> as a rotation matrix, body-fixed linear velocity <strong>v</strong>, body-fixed angular velocity <strong>ω</strong>. The pair (<strong>R</strong>, <strong>p</strong>) packs into a single <strong>4×4 pose matrix</strong> <span class="math-inline">g ∈ SE(3)</span>:
+    </p>
+
+    <figure style="margin-bottom: 16px;">
+      <svg class="diag" viewBox="0 0 840 380" xmlns="http://www.w3.org/2000/svg">
+        <text x="24" y="28" class="lbl-big">STATE, POSE, AND CONTROL VOCABULARY</text>
+        <line x1="24" y1="40" x2="816" y2="40" class="stroke-soft"/>
+
+        <g transform="translate(52,70)">
+          <rect x="0" y="0" width="278" height="178" class="stroke" fill="#fffdf6"/>
+          <rect x="24" y="24" width="150" height="110" stroke="#2347d9" fill="#eef2ff" stroke-width="1.4"/>
+          <text x="99" y="76" class="lbl-big" text-anchor="middle">R</text>
+          <text x="99" y="94" class="lbl-soft" text-anchor="middle">3×3 ORIENTATION</text>
+          <rect x="194" y="24" width="50" height="110" stroke="#c64545" fill="#fffdf6" stroke-width="1.4"/>
+          <text x="219" y="76" class="lbl-big" text-anchor="middle" style="fill:#c64545;">p</text>
+          <text x="219" y="94" class="lbl-soft" text-anchor="middle">3×1</text>
+          <rect x="24" y="146" width="150" height="20" stroke="#9ca3af" fill="#faf8f1"/>
+          <text x="99" y="160" class="lbl-soft" text-anchor="middle">0 0 0</text>
+          <rect x="194" y="146" width="50" height="20" stroke="#9ca3af" fill="#faf8f1"/>
+          <text x="219" y="160" class="lbl-soft" text-anchor="middle">1</text>
+          <text x="10" y="97" class="lbl-big">g =</text>
+          <text x="248" y="97" class="lbl-big">∈ SE(3)</text>
+        </g>
+
+        <g transform="translate(392,70)">
+          <text x="0" y="8" class="lbl-big">x = (p, R, v, ω)</text>
+          <line x1="0" y1="20" x2="392" y2="20" class="stroke-soft"/>
+          <text x="0" y="46" class="body">p ∈ R³: base position in world frame</text>
+          <text x="0" y="66" class="body">R ∈ SO(3): base orientation</text>
+          <text x="0" y="86" class="body">v, ω ∈ R³: body-fixed linear and angular velocity</text>
+          <text x="0" y="118" class="lbl">DYNAMICS</text>
+          <text x="0" y="140" class="body">ġ = g·V̂</text>
+          <text x="0" y="160" class="body">M(q)V̇ + b(x) = B(q)·u</text>
+          <text x="0" y="194" class="lbl">CONTROL INPUT u ∈ R⁴</text>
+          <text x="0" y="216" class="body">three body torques + one thrust along local ẑ_b</text>
+          <text x="0" y="236" class="body">end-effector pose: g_e(q) = g · φ(r) — fixed offset</text>
+        </g>
+
+        <g transform="translate(80,338)">
+          <line x1="0" y1="0" x2="680" y2="0" class="stroke-soft"/>
+          <text x="0" y="22" class="lbl-soft">FIG. 1.3 · STATE &amp; DYNAMICS</text>
+          <text x="680" y="22" class="lbl-soft" text-anchor="end">AFTER §1.2</text>
+        </g>
+      </svg>
+    </figure>
+
+    <p>
+      The dynamics <span class="math-inline">ẋ = f(x,u)</span> are derived in Kobilarov 2014 — the upshot is that the system is differentially flat (you can recover the controls from a sufficiently smooth trajectory), which is what makes the polynomial-snap planner in Chapter 2 work.
+    </p>
+
+    <p>
+      A planner that wanted full information would need three things up front: the desired final pose <span class="math-inline">ḡ(t_f)</span>, a desired trajectory <span class="math-inline">x̄(·)</span>, and the obstacle set <span class="math-inline">E ⊂ ℝ³</span>. <strong>None of these are available a priori.</strong> The drone gets a camera and a depth sensor and has to estimate them on the fly. That's the whole thesis.
+    </p>
+
+    <div class="eq" style="text-align:left;">
+      min<sub>u(·)</sub> &nbsp; ∫<sub>t₀</sub><sup>t<sub>f</sub></sup> ½‖x(t) − x̄(t)‖²<sub>Q</sub> + ½‖u(t)‖²<sub>R</sub> dt<br/>
+      <span style="margin-left:24px;">subject to &nbsp; ẋ = f(x, u) &nbsp; (dynamics)</span><br/>
+      <span style="margin-left:24px;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; A(q(t)) ∩ E = ∅ &nbsp; (avoid collisions)</span>
+      <span class="lbl">EQ 1.3 · OPTIMAL CONTROL</span>
+    </div>
+
+
+    <!-- ============== SECTION 4: TWO SYSTEMS ============== -->
+    <h2 id="two-systems"><span class="num">§1.4</span>Two systems, one task</h2>
+
+    <p>
+      The thesis tackles the same problem with two architectures. Chapter 2 keeps perception and planning as separate modules that communicate through a clean interface (the goal pose). Chapter 3 fuses them: a single neural network looks at pixels and emits future waypoints directly.
+    </p>
+
+    <figure>
+      <svg class="diag" viewBox="0 0 840 420" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="f14-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 Z" class="fill"/>
+          </marker>
+        </defs>
+
+        <text x="24" y="28" class="lbl-big">TWO WAYS TO DRAW THE PERCEPTION/PLANNING BOUNDARY</text>
+        <line x1="24" y1="40" x2="816" y2="40" class="stroke-soft"/>
+
+        <text x="32" y="72" class="lbl-big">CHAPTER 2 · DECOUPLED VISUAL SERVOING</text>
+        <text x="32" y="88" class="lbl-soft">INTERFACE BETWEEN MODULES IS A SINGLE 6-DOF GOAL POSE</text>
+        <g transform="translate(34,108)">
+          <rect x="0" y="0" width="104" height="60" class="stroke fill-soft" rx="3"/>
+          <text x="52" y="23" class="lbl" text-anchor="middle">RGB-D</text>
+          <text x="52" y="39" class="lbl-soft" text-anchor="middle">REAL SENSE</text>
+          <line x1="104" y1="30" x2="134" y2="30" class="stroke" marker-end="url(#f14-arr)"/>
+          <rect x="136" y="0" width="104" height="60" class="stroke fill-soft" rx="3"/>
+          <text x="188" y="23" class="lbl" text-anchor="middle">U-NET</text>
+          <text x="188" y="39" class="lbl-soft" text-anchor="middle">MASK</text>
+          <line x1="240" y1="30" x2="270" y2="30" class="stroke" marker-end="url(#f14-arr)"/>
+          <rect x="272" y="0" width="120" height="60" class="stroke fill-soft" rx="3"/>
+          <text x="332" y="23" class="lbl" text-anchor="middle">PINHOLE + DEPTH</text>
+          <text x="332" y="39" class="lbl-soft" text-anchor="middle">p_ORANGE</text>
+          <line x1="392" y1="30" x2="422" y2="30" class="stroke" marker-end="url(#f14-arr)"/>
+          <rect x="424" y="0" width="120" height="60" class="stroke fill-soft" rx="3"/>
+          <text x="484" y="23" class="lbl" text-anchor="middle">RANSAC PLANE</text>
+          <text x="484" y="39" class="lbl-soft" text-anchor="middle">BEST YAW</text>
+          <line x1="544" y1="30" x2="574" y2="30" class="stroke" marker-end="url(#f14-arr)"/>
+          <rect x="576" y="0" width="128" height="60" class="stroke fill-soft" rx="3"/>
+          <text x="640" y="23" class="lbl" text-anchor="middle">MIN-SNAP</text>
+          <text x="640" y="39" class="lbl-soft" text-anchor="middle">PD TRACKER</text>
+          <path d="M 640 64 C 640 104 58 104 58 64" class="dashed" marker-end="url(#f14-arr)"/>
+          <text x="352" y="116" class="lbl-soft" text-anchor="middle">REPLAN AT 8–9 HZ WHILE ORANGE REMAINS VISIBLE</text>
+        </g>
+
+        <text x="32" y="258" class="lbl-big">CHAPTER 3 · END-TO-END IMITATION</text>
+        <text x="32" y="274" class="lbl-soft">NETWORK LEARNS VISUAL FEATURES THAT IMPLY WHERE TO FLY NEXT</text>
+        <g transform="translate(34,294)">
+          <rect x="0" y="0" width="116" height="60" class="stroke fill-soft" rx="3"/>
+          <text x="58" y="23" class="lbl" text-anchor="middle">RGB + MASK</text>
+          <text x="58" y="39" class="lbl-soft" text-anchor="middle">CONCATENATED</text>
+          <line x1="116" y1="30" x2="146" y2="30" class="stroke" marker-end="url(#f14-arr)"/>
+          <rect x="148" y="0" width="250" height="60" stroke="#2347d9" fill="#eef2ff" stroke-width="1.6" rx="3"/>
+          <text x="273" y="22" class="lbl-big" text-anchor="middle">RESNET8 · 1800 LOGITS</text>
+          <text x="273" y="39" class="lbl-soft" text-anchor="middle">3 WAYPOINTS × 6 DOF × 100 BINS</text>
+          <line x1="398" y1="30" x2="428" y2="30" class="stroke" marker-end="url(#f14-arr)"/>
+          <rect x="430" y="0" width="118" height="60" class="stroke fill-soft" rx="3"/>
+          <text x="489" y="23" class="lbl" text-anchor="middle">DDP SMOOTH</text>
+          <text x="489" y="39" class="lbl-soft" text-anchor="middle">DYNAMICS</text>
+          <line x1="548" y1="30" x2="578" y2="30" class="stroke" marker-end="url(#f14-arr)"/>
+          <rect x="580" y="0" width="124" height="60" class="stroke fill-soft" rx="3"/>
+          <text x="642" y="23" class="lbl" text-anchor="middle">PD TRACK</text>
+          <text x="642" y="39" class="lbl-soft" text-anchor="middle">DJI AUTOPILOT</text>
+          <path d="M 642 64 C 642 96 58 96 58 64" class="dashed" marker-end="url(#f14-arr)"/>
+          <text x="352" y="108" class="lbl-soft" text-anchor="middle">CLOSED LOOP WITH THREE 0.5 S WAYPOINT INCREMENTS</text>
+        </g>
+        <text x="24" y="414" class="lbl-soft">FIG. 1.4 · DECOUPLED VS END-TO-END PIPELINES</text>
+      </svg>
+      <figcaption>
+        <span class="figno">FIG. 1.4</span> Two architectures, side by side. The decoupled stack passes only a goal pose between perception and planning — a clean, low-bandwidth interface that's easy to debug. The end-to-end stack lets the network learn its own internal representation, which means it can pick up cues the engineer never thought to expose, but you can't easily inspect what it's doing.
+      </figcaption>
+    </figure>
+
+    <div class="compare">
+      <div>
+        <h4>Decoupled · Ch 2</h4>
+        <ul>
+          <li class="good">Reliable when goal is in view</li>
+          <li class="good">Each module independently testable</li>
+          <li class="good">No training data needed at the planner</li>
+          <li class="bad">Hard fail when orange leaves view</li>
+          <li class="bad">RANSAC plane fit oscillates near sparse foliage</li>
+          <li class="bad">No notion of "exploration"</li>
+        </ul>
+      </div>
+      <div>
+        <h4>End-to-end · Ch 3</h4>
+        <ul>
+          <li class="good">Learns latent visual cues for free</li>
+          <li class="good">Emergent exploration (circles tree if no orange)</li>
+          <li class="good">Can handle initial occlusion</li>
+          <li class="bad">Needs an expert teacher and lots of data</li>
+          <li class="bad">Sim-to-real degrades performance</li>
+          <li class="bad">Fails opaquely</li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout">
+      <span class="tag">For the LLM person</span>
+      <p>
+        The decoupled vs end-to-end split here is the same axis as <em>retrieval-augmented agents vs end-to-end VLA</em>. In retrieval, you commit to "the world is a vector store, the LLM is a planner over its outputs." In a VLA you let the model learn its own visual representations and emit actions directly. Both papers in this thesis are early-2020s analogues of that debate. Chapter 3 is closer to the modern VLA spirit; Chapter 2 is closer to the agent-with-tools approach.
+      </p>
+    </div>
+
+
+    <div class="pagenav">
+      <a href="index.html">← Cover<span class="nm">A visual reading</span></a>
+      <a href="chapter-2.html">Next →<span class="nm">2 · The decoupled pipeline</span></a>
+    </div>
+
+  </article>
+
+  <div class="margin-tag">
+    <span class="top">PERCEPTION-BASED UAV PATH PLANNING</span>
+    <span class="mid">CHAPTER 1 · THE PROBLEM</span>
+    <span class="bot">FIG. 1.1 — 1.4</span>
+  </div>
+
+</main>
+
+</body>
+</html>

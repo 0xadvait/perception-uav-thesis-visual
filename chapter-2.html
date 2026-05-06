@@ -1,0 +1,668 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>2 · The decoupled pipeline — A visual reading of Kothiyal 2021</title>
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<div class="linkbar">
+  <div class="group">
+    <span class="lbl-tag">Source</span>
+    <a href="https://jscholarship.library.jhu.edu/items/3b69ca6c-e302-4ad5-bf1e-c833dee928bd" target="_blank" rel="noopener">Paper · JScholarship<span class="arrow">↗</span></a>
+    <a href="https://www.linkedin.com/in/siddharth-kothiyal/" target="_blank" rel="noopener">Author · Siddharth Kothiyal<span class="arrow">↗</span></a>
+  </div>
+  <div class="group">
+    <span class="lbl-tag">Built by</span>
+    <a href="https://github.com/0xadvait" target="_blank" rel="noopener">GitHub · @0xadvait<span class="arrow">↗</span></a>
+    <a href="https://x.com/advait_jayant" target="_blank" rel="noopener">X · @advait_jayant<span class="arrow">↗</span></a>
+  </div>
+</div>
+
+<header class="topbar">
+  <div class="brand">A visual reading of <em>Perception Based UAV Path Planning for Fruit Harvesting</em></div>
+  <div class="crumbs">
+    <a href="index.html">Cover</a> ·
+    <a href="chapter-1.html">1 · The problem</a> ·
+    <a href="chapter-2.html" class="current">2 · Decoupled</a> ·
+    <a href="chapter-3.html">3 · Learning to plan</a> ·
+    <a href="chapter-4.html">4 · What worked</a> ·
+    <a href="terminology.html">Terminology</a>
+  </div>
+</header>
+
+<main class="shell">
+
+  <aside class="toc">
+    <h3>Chapter 2</h3>
+    <ol style="counter-reset: none;">
+      <li style="counter-increment: none;"><a href="#pipeline">The five blocks</a></li>
+      <li style="counter-increment: none;"><a href="#segmentation">Segmenting the orange</a></li>
+      <li style="counter-increment: none;"><a href="#pinhole">From pixels to 3D</a></li>
+      <li style="counter-increment: none;"><a href="#ransac">Where to attack from</a></li>
+      <li style="counter-increment: none;"><a href="#pick">The two-step pick</a></li>
+      <li style="counter-increment: none;"><a href="#results">102 runs</a></li>
+    </ol>
+    <h3 style="margin-top:24px;">Other chapters</h3>
+    <ol>
+      <li><a href="chapter-1.html">The problem</a></li>
+      <li><a href="chapter-2.html">Decoupled pipeline</a></li>
+      <li><a href="chapter-3.html">Learning to plan</a></li>
+      <li><a href="chapter-4.html">What worked</a></li>
+    </ol>
+    <h3 style="margin-top:24px;"><a href="terminology.html" style="color:var(--blue);">Terminology →</a></h3>
+  </aside>
+
+  <article class="content">
+
+    <h1><span class="num">CHAPTER 2</span>The decoupled pipeline</h1>
+    <p class="deck">
+      Five modules in a chain. Each one does one thing, hands off a clean data structure, and forgets the rest.
+    </p>
+
+
+    <!-- ============ §2.1 PIPELINE ============ -->
+    <h2 id="pipeline"><span class="num">§2.1</span>Five blocks</h2>
+
+    <p>
+      Every cycle, this is what happens at 8–9 Hz:
+    </p>
+
+    <figure>
+      <svg class="diag" viewBox="0 0 840 460" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="f21-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 Z" class="fill"/>
+          </marker>
+        </defs>
+        <text x="24" y="28" class="lbl-big">DECOUPLED VISUAL-SERVOING LOOP</text>
+        <text x="24" y="44" class="lbl-soft">EACH BOX IS A SEPARATE ROS PROCESS; ONLY THE GOAL POSE CROSSES INTO PLANNING</text>
+        <line x1="24" y1="58" x2="816" y2="58" class="stroke-soft"/>
+
+        <g transform="translate(34,86)">
+          <rect x="0" y="0" width="126" height="86" class="stroke fill-soft" rx="3"/>
+          <text x="63" y="22" class="lbl-big" text-anchor="middle">1</text>
+          <text x="63" y="40" class="lbl" text-anchor="middle">RGB-D CAMERA</text>
+          <text x="63" y="56" class="lbl-soft" text-anchor="middle">640×480 @ 15 FPS</text>
+          <rect x="20" y="64" width="36" height="16" stroke="#2347d9" fill="#fffdf6" stroke-width="0.7"/>
+          <circle cx="39" cy="72" r="5" fill="#f6802b"/>
+          <rect x="68" y="64" width="36" height="16" stroke="#2347d9" fill="#eef2ff" stroke-width="0.7"/>
+          <line x1="126" y1="43" x2="160" y2="43" class="stroke" marker-end="url(#f21-arr)"/>
+
+          <rect x="162" y="0" width="126" height="86" class="stroke fill-soft" rx="3"/>
+          <text x="225" y="22" class="lbl-big" text-anchor="middle">2</text>
+          <text x="225" y="40" class="lbl" text-anchor="middle">U-NET MASK</text>
+          <text x="225" y="56" class="lbl-soft" text-anchor="middle">IoU 93.49%</text>
+          <rect x="201" y="64" width="48" height="16" fill="#1f2937"/>
+          <circle cx="225" cy="72" r="6" fill="#fffdf6"/>
+          <line x1="288" y1="43" x2="322" y2="43" class="stroke" marker-end="url(#f21-arr)"/>
+
+          <rect x="324" y="0" width="132" height="86" class="stroke fill-soft" rx="3"/>
+          <text x="390" y="22" class="lbl-big" text-anchor="middle">3</text>
+          <text x="390" y="40" class="lbl" text-anchor="middle">3D PROJECTION</text>
+          <text x="390" y="56" class="lbl-soft" text-anchor="middle">PINHOLE + DEPTH</text>
+          <g transform="translate(350,64)">
+            <line x1="0" y1="16" x2="78" y2="16" class="grid"/>
+            <line x1="14" y1="2" x2="14" y2="28" class="grid"/>
+            <circle cx="28" cy="16" r="2.2" class="fill"/>
+            <circle cx="42" cy="12" r="2.2" class="fill"/>
+            <circle cx="54" cy="18" r="2.2" class="fill"/>
+            <circle cx="64" cy="10" r="2.2" fill="#f6802b"/>
+            <path d="M 10 26 L 34 10 L 70 22" stroke="#5b7cf5" fill="none" stroke-width="0.8" stroke-dasharray="2 2"/>
+          </g>
+          <line x1="456" y1="43" x2="490" y2="43" class="stroke" marker-end="url(#f21-arr)"/>
+
+          <rect x="492" y="0" width="132" height="86" class="stroke fill-soft" rx="3"/>
+          <text x="558" y="22" class="lbl-big" text-anchor="middle">4</text>
+          <text x="558" y="40" class="lbl" text-anchor="middle">RANSAC YAW</text>
+          <text x="558" y="56" class="lbl-soft" text-anchor="middle">3× FOLIAGE BOX</text>
+          <g transform="translate(520,62)">
+            <polygon points="4,18 44,4 76,17 36,31" stroke="#2347d9" fill="#fffdf6" stroke-width="0.8"/>
+            <circle cx="22" cy="18" r="2" class="fill"/><circle cx="38" cy="13" r="2" class="fill"/><circle cx="52" cy="17" r="2" class="fill"/><circle cx="64" cy="9" r="2" fill="#c64545" opacity="0.45"/>
+            <line x1="40" y1="16" x2="18" y2="0" stroke="#c64545" stroke-width="1.2" marker-end="url(#f21-arr)"/>
+          </g>
+          <line x1="624" y1="43" x2="658" y2="43" class="stroke" marker-end="url(#f21-arr)"/>
+
+          <rect x="660" y="0" width="112" height="86" class="stroke fill-soft" rx="3"/>
+          <text x="716" y="22" class="lbl-big" text-anchor="middle">5</text>
+          <text x="716" y="40" class="lbl" text-anchor="middle">MIN-SNAP</text>
+          <text x="716" y="56" class="lbl-soft" text-anchor="middle">PD TRACKER</text>
+          <g transform="translate(684,64)">
+            <path d="M 0 16 C 18 2 38 2 64 16" stroke="#2347d9" fill="none" stroke-width="1" stroke-dasharray="2 2" marker-end="url(#f21-arr)"/>
+            <rect x="1" y="18" width="14" height="7" class="stroke" fill="#fffdf6"/>
+            <circle cx="66" cy="16" r="5" fill="#f6802b" stroke="#c75d18" stroke-width="0.8"/>
+          </g>
+        </g>
+
+        <path d="M 748 178 C 748 252 96 252 96 178" class="dashed" marker-end="url(#f21-arr)"/>
+        <text x="422" y="246" class="lbl-soft" text-anchor="middle">CLOSED LOOP EVERY ~110 MS · RESET TO LAST GOOD STATE IF ORANGE LEAVES VIEW</text>
+
+        <g transform="translate(36,286)">
+          <text x="0" y="0" class="lbl-big">DATA CONTRACTS</text>
+          <line x1="0" y1="12" x2="768" y2="12" class="stroke-soft"/>
+          <text x="0" y="38" class="lbl-soft">1 → 2</text><text x="70" y="38" class="body">RGB image plus aligned depth map from RealSense D435i</text>
+          <text x="0" y="62" class="lbl-soft">2 → 3</text><text x="70" y="62" class="body">Binary orange mask; each positive pixel is a candidate point</text>
+          <text x="0" y="86" class="lbl-soft">3 → 4</text><text x="70" y="86" class="body">Mean orange point and surrounding 3× orange-size foliage point cloud</text>
+          <text x="0" y="110" class="lbl-soft">4 → 5</text><text x="70" y="110" class="body">Goal pose ḡ = position plus best approach yaw</text>
+          <text x="0" y="146" class="lbl-soft">FIG. 2.1 · DECOUPLED PIPELINE · §2.2</text>
+        </g>
+      </svg>
+      <figcaption>
+        <span class="figno">FIG. 2.1</span> The visual-servoing loop. Each block is a separate ROS node. The handoff between (4) and (5) is the only place that perception and planning communicate — through a 6-DOF pose. This is the contract that the next chapter rewrites.
+      </figcaption>
+    </figure>
+
+
+    <!-- ============ §2.2 SEGMENTATION ============ -->
+    <h2 id="segmentation"><span class="num">§2.2</span>Segmenting the orange</h2>
+
+    <p>
+      The first job is finding which pixels in the RGB image actually <em>are</em> the orange. The thesis uses a small fully-convolutional U-Net trained on hand-labelled images. It hits an Intersection-over-Union of <strong>93.49%</strong> on held-out frames.
+    </p>
+
+    <figure>
+      <svg class="diag" viewBox="0 0 840 340" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="f22-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 Z" class="fill"/>
+          </marker>
+        </defs>
+        <text x="24" y="28" class="lbl-big">U-NET SEGMENTER FOR THE ORANGE MASK</text>
+        <line x1="24" y1="42" x2="816" y2="42" class="stroke-soft"/>
+
+        <g transform="translate(38,130)">
+          <rect x="0" y="0" width="70" height="70" class="stroke fill-soft"/>
+          <circle cx="42" cy="36" r="12" fill="#f6802b"/>
+          <text x="35" y="94" class="lbl" text-anchor="middle">RGB</text>
+          <text x="35" y="108" class="lbl-soft" text-anchor="middle">640×480×3</text>
+          <line x1="76" y1="35" x2="110" y2="35" class="stroke" marker-end="url(#f22-arr)"/>
+        </g>
+
+        <g transform="translate(150,98)">
+          <text x="150" y="0" class="lbl">ENCODER · 4 CONV LAYERS</text>
+          <rect x="0" y="38" width="52" height="96" stroke="#2347d9" fill="#eef2ff"/>
+          <text x="26" y="152" class="lbl-soft" text-anchor="middle">128</text>
+          <rect x="72" y="50" width="52" height="72" stroke="#2347d9" fill="#eef2ff"/>
+          <text x="98" y="140" class="lbl-soft" text-anchor="middle">256</text>
+          <rect x="144" y="62" width="52" height="48" stroke="#2347d9" fill="#eef2ff"/>
+          <text x="170" y="128" class="lbl-soft" text-anchor="middle">512</text>
+          <rect x="216" y="70" width="52" height="32" stroke="#2347d9" fill="#eef2ff"/>
+          <text x="242" y="120" class="lbl-soft" text-anchor="middle">512</text>
+          <path d="M 52 86 L 72 86" class="stroke" marker-end="url(#f22-arr)"/>
+          <path d="M 124 86 L 144 86" class="stroke" marker-end="url(#f22-arr)"/>
+          <path d="M 196 86 L 216 86" class="stroke" marker-end="url(#f22-arr)"/>
+        </g>
+
+        <g transform="translate(428,98)">
+          <line x1="0" y1="86" x2="54" y2="86" class="dashed"/>
+          <text x="27" y="72" class="lbl-soft" text-anchor="middle">BOTTLENECK</text>
+        </g>
+
+        <g transform="translate(494,98)">
+          <text x="122" y="0" class="lbl">DECODER · 3 DECONV LAYERS</text>
+          <rect x="0" y="62" width="52" height="48" stroke="#2347d9" fill="#eef2ff"/>
+          <text x="26" y="128" class="lbl-soft" text-anchor="middle">512</text>
+          <rect x="72" y="50" width="52" height="72" stroke="#2347d9" fill="#eef2ff"/>
+          <text x="98" y="140" class="lbl-soft" text-anchor="middle">256</text>
+          <rect x="144" y="38" width="52" height="96" stroke="#2347d9" fill="#eef2ff"/>
+          <text x="170" y="152" class="lbl-soft" text-anchor="middle">128</text>
+          <path d="M 52 86 L 72 86" class="stroke" marker-end="url(#f22-arr)"/>
+          <path d="M 124 86 L 144 86" class="stroke" marker-end="url(#f22-arr)"/>
+          <line x1="196" y1="86" x2="230" y2="86" class="stroke" marker-end="url(#f22-arr)"/>
+        </g>
+
+        <g transform="translate(728,130)">
+          <rect x="0" y="0" width="70" height="70" stroke="#2347d9" fill="#1f2937"/>
+          <circle cx="42" cy="36" r="12" fill="#fffdf6"/>
+          <text x="35" y="94" class="lbl" text-anchor="middle">MASK</text>
+          <text x="35" y="108" class="lbl-soft" text-anchor="middle">BINARY</text>
+        </g>
+
+        <path d="M 176 124 C 294 60 540 60 664 124" class="dashed" stroke="#5b7cf5" marker-end="url(#f22-arr)"/>
+        <text x="420" y="70" class="lbl-soft" text-anchor="middle" style="fill:#5b7cf5;">SKIP L1↔L7 · HIGH-RES EDGES</text>
+        <path d="M 248 136 C 342 94 472 94 592 136" class="dashed" stroke="#5b7cf5" marker-end="url(#f22-arr)"/>
+        <text x="420" y="86" class="lbl-soft" text-anchor="middle" style="fill:#5b7cf5;">SKIP L2↔L6 · 1×1 CONV</text>
+
+        <text x="24" y="300" class="lbl-soft">RESULT: SINGLE-CLASS ORANGE SEGMENTER · IoU 93.49%</text>
+        <text x="24" y="318" class="lbl-soft">FIG. 2.2 · U-NET ARCHITECTURE · §2.2.1</text>
+      </svg>
+      <figcaption>
+        <span class="figno">FIG. 2.2</span> A standard encoder-decoder fully-convolutional network with two skip connections. Channels: <span class="math-inline">128 → 256 → 512 → 512 ↘ 512 → 256 → 128</span>. The skip connections feed early high-resolution features back into the decoder so fine details (the round edge of the orange) survive to the output mask.
+      </figcaption>
+    </figure>
+
+    <div class="callout">
+      <span class="tag">Engineering note</span>
+      <p>
+        <!-- Codex improvement: soften the 2026 aside and avoid over-claiming a specific replacement model. -->
+        For the orange-picking task, this network is doing one thing: <em>where is the orange in this image?</em> Today you would start with a foundation segmenter or an open-vocabulary mask model before training a tiny U-Net from scratch. In 2021, a hand-labelled single-class U-Net was the straightforward engineering choice.
+      </p>
+    </div>
+
+
+    <!-- ============ §2.3 PINHOLE ============ -->
+    <h2 id="pinhole"><span class="num">§2.3</span>From pixels to 3D</h2>
+
+    <p>
+      A 2D mask is not enough — the planner needs a position in metres. The thesis uses the standard pinhole camera model: every world point projects through a single point (the camera origin) onto a flat image plane at focal length <span class="math-inline">f</span>. Inverting that projection requires one extra piece of information: <strong>depth</strong>. That's why the camera is RGB-<em>D</em>.
+    </p>
+
+    <figure>
+      <svg class="diag" viewBox="0 0 940 550" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="f23-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 Z" class="fill"/>
+          </marker>
+        </defs>
+
+        <text x="24" y="28" class="lbl-big">PINHOLE CAMERA MODEL · PIXEL TO 3D POINT</text>
+        <text x="24" y="44" class="lbl-soft">SIDE CUTAWAY: SENSOR PLANE BEHIND A PINHOLE, WORLD POINT P IN FRONT</text>
+        <line x1="24" y1="58" x2="916" y2="58" class="stroke-soft"/>
+
+        <!-- camera body, sensor, and pinhole -->
+        <g>
+          <path d="M 82 136 L 192 102 L 344 132 L 230 168 Z" class="stroke fill-soft" stroke-width="1.5"/>
+          <path d="M 82 136 L 230 168 L 230 338 L 82 304 Z" class="stroke" fill="#eef2ff"/>
+          <path d="M 230 168 L 344 132 L 344 300 L 230 338 Z" class="stroke" fill="#dfe7ff"/>
+          <path d="M 112 178 L 220 148 L 220 308 L 112 338 Z" stroke="#2347d9" fill="#fffdf6" stroke-width="1.2"/>
+          <path d="M 308 148 L 344 132 L 344 300 L 308 316 Z" class="stroke" fill="#fffdf6"/>
+          <circle cx="344" cy="218" r="7" fill="#1f2937" stroke="#2347d9" stroke-width="1.2"/>
+          <circle cx="344" cy="218" r="2.6" fill="#fffdf6"/>
+
+          <line x1="130" y1="173" x2="130" y2="333" class="grid"/>
+          <line x1="148" y1="168" x2="148" y2="328" class="grid"/>
+          <line x1="166" y1="163" x2="166" y2="323" class="grid"/>
+          <line x1="184" y1="158" x2="184" y2="318" class="grid"/>
+          <line x1="202" y1="153" x2="202" y2="313" class="grid"/>
+          <line x1="112" y1="206" x2="220" y2="176" class="grid"/>
+          <line x1="112" y1="238" x2="220" y2="208" class="grid"/>
+          <line x1="112" y1="270" x2="220" y2="240" class="grid"/>
+          <line x1="112" y1="302" x2="220" y2="272" class="grid"/>
+          <circle cx="176" cy="246" r="5" fill="#5b7cf5"/>
+          <line x1="176" y1="246" x2="206" y2="238" stroke="#c64545" stroke-width="1.2" marker-end="url(#f23-arr)"/>
+          <line x1="176" y1="246" x2="176" y2="204" stroke="#2f8f5b" stroke-width="1.2" marker-end="url(#f23-arr)"/>
+          <text x="211" y="242" class="lbl" fill="#c64545">u</text>
+          <text x="181" y="202" class="lbl" fill="#2f8f5b">v</text>
+
+          <text x="108" y="368" class="lbl">IMAGE PLANE</text>
+          <text x="108" y="382" class="lbl-soft">PIXEL GRID ON SENSOR</text>
+          <text x="316" y="112" class="lbl">PINHOLE</text>
+          <line x1="330" y1="116" x2="342" y2="210" class="lead"/>
+        </g>
+
+        <!-- rays from the orange through the pinhole to the sensor -->
+        <g>
+          <circle cx="596" cy="152" r="25" fill="#f6802b" stroke="#c75d18" stroke-width="1.4"/>
+          <ellipse cx="587" cy="143" rx="6" ry="4" fill="#fffdf6" opacity="0.7"/>
+          <path d="M 595 127 C 600 113 612 112 620 121" stroke="#2f8f5b" fill="none" stroke-width="1.4"/>
+          <text x="628" y="130" class="lbl">WORLD POINT P</text>
+          <text x="628" y="146" class="lbl-soft">P = (x_c, y_c, z_c)</text>
+          <text x="628" y="160" class="lbl-soft">ORANGE SURFACE SAMPLE</text>
+
+          <line x1="596" y1="127" x2="344" y2="218" stroke="#2347d9" stroke-width="1" stroke-dasharray="3 3"/>
+          <line x1="596" y1="177" x2="344" y2="218" stroke="#2347d9" stroke-width="1" stroke-dasharray="3 3"/>
+          <line x1="344" y1="218" x2="176" y2="246" stroke="#5b7cf5" stroke-width="1.2" stroke-dasharray="3 3"/>
+          <text x="184" y="264" class="lbl-soft">PIXEL (u,v)</text>
+        </g>
+
+        <!-- focal length, camera frame, and depth -->
+        <g>
+          <line x1="220" y1="402" x2="344" y2="402" class="stroke"/>
+          <line x1="220" y1="396" x2="220" y2="408" class="stroke"/>
+          <line x1="344" y1="396" x2="344" y2="408" class="stroke"/>
+          <text x="282" y="422" class="lbl" text-anchor="middle">f</text>
+          <text x="282" y="436" class="lbl-soft" text-anchor="middle">FOCAL LENGTH</text>
+
+          <line x1="344" y1="218" x2="454" y2="218" stroke="#c64545" stroke-width="1.4" marker-end="url(#f23-arr)"/>
+          <text x="460" y="222" class="lbl" fill="#c64545">ẑ_c</text>
+          <line x1="344" y1="218" x2="344" y2="126" stroke="#2f8f5b" stroke-width="1.4" marker-end="url(#f23-arr)"/>
+          <text x="350" y="124" class="lbl" fill="#2f8f5b">ŷ_c</text>
+          <line x1="344" y1="218" x2="294" y2="266" stroke="#2347d9" stroke-width="1.4" stroke-dasharray="3 2" marker-end="url(#f23-arr)"/>
+          <text x="276" y="280" class="lbl">x̂_c</text>
+
+          <line x1="344" y1="338" x2="596" y2="338" class="stroke"/>
+          <line x1="344" y1="332" x2="344" y2="344" class="stroke"/>
+          <line x1="596" y1="332" x2="596" y2="344" class="stroke"/>
+          <text x="470" y="358" class="lbl" text-anchor="middle">z_c FROM DEPTH MAP</text>
+          <text x="470" y="372" class="lbl-soft" text-anchor="middle">WITHOUT z_c THE RAY HAS INFINITELY MANY 3D POINTS</text>
+        </g>
+
+        <!-- equations -->
+        <g transform="translate(660,188)">
+          <rect x="0" y="0" width="252" height="316" class="stroke" fill="#fffdf6"/>
+          <text x="14" y="24" class="lbl-big">INTRINSIC MATRIX M_INT</text>
+          <text x="14" y="38" class="lbl-soft">3×4 — APPLIES TO HOMOGENEOUS [x_c y_c z_c 1]ᵀ</text>
+          <text x="14" y="62" class="body">[ f_x   0    o_x   0 ]</text>
+          <text x="14" y="80" class="body">[  0   f_y   o_y   0 ]</text>
+          <text x="14" y="98" class="body">[  0    0     1    0 ]</text>
+          <line x1="14" y1="118" x2="238" y2="118" class="stroke-soft"/>
+          <text x="14" y="142" class="lbl">FORWARD PROJECTION</text>
+          <text x="14" y="164" class="body">[u·z_c, v·z_c, z_c]ᵀ = M_int · P̃</text>
+          <text x="14" y="184" class="body">u = f_x·x_c/z_c + o_x</text>
+          <text x="14" y="202" class="body">v = f_y·y_c/z_c + o_y</text>
+          <line x1="14" y1="220" x2="238" y2="220" class="stroke-soft"/>
+          <text x="14" y="244" class="lbl">INVERSE NEEDS DEPTH</text>
+          <text x="14" y="266" class="body">x_c = (u − o_x)·z_c / f_x</text>
+          <text x="14" y="284" class="body">y_c = (v − o_y)·z_c / f_y</text>
+          <text x="14" y="302" class="body">z_c = depth(u,v)</text>
+        </g>
+
+        <text x="24" y="530" class="lbl-soft">FIG. 2.3 · PINHOLE PROJECTION · §2.2.2</text>
+      </svg>
+      <figcaption>
+        <span class="figno">FIG. 2.3</span> Single world point P projecting to a pixel (u,v). Going pixel → world is impossible without z_c — there's a one-parameter family of world points that project to the same pixel. The depth sensor pins down z_c, and the rest follows from the intrinsic matrix M_int. Every "orange pixel" gets projected; their mean is the goal position.
+      </figcaption>
+    </figure>
+
+
+    <!-- ============ §2.4 RANSAC ============ -->
+    <h2 id="ransac"><span class="num">§2.4</span>Where to attack from</h2>
+
+    <p>
+      Knowing where the orange <em>is</em> is half the goal pose. The other half is <em>which way to come in</em> — pluck it from the wrong angle and the gripper smacks into a leaf or the rest of the foliage occludes the camera. The thesis's heuristic: come in <strong>perpendicular to the surface of foliage around the orange</strong>. That's the angle with the most clear airspace.
+    </p>
+
+    <p>
+      To estimate that surface, the thesis grows a 3× box around the orange in the segmented image, projects all those pixels to 3D, and fits a plane through them with RANSAC. The plane's normal is the desired approach direction.
+    </p>
+
+    <figure>
+      <svg class="diag" viewBox="0 0 840 360" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="f24-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 Z" class="fill"/>
+          </marker>
+        </defs>
+        <text x="24" y="28" class="lbl-big">APPROACH YAW FROM FOLIAGE GEOMETRY</text>
+        <line x1="24" y1="42" x2="816" y2="42" class="stroke-soft"/>
+
+        <g transform="translate(38,86)">
+          <text x="60" y="0" class="lbl" text-anchor="middle">1 · MASK BOX</text>
+          <rect x="0" y="24" width="120" height="120" fill="#1f2937" stroke="#2347d9"/>
+          <circle cx="60" cy="84" r="14" fill="#fffdf6"/>
+          <rect x="20" y="44" width="80" height="80" stroke="#f6802b" fill="none" stroke-width="1.4" stroke-dasharray="4 3"/>
+          <text x="60" y="166" class="lbl-soft" text-anchor="middle">3× ORANGE SIZE</text>
+        </g>
+        <line x1="174" y1="170" x2="216" y2="170" class="stroke" marker-end="url(#f24-arr)"/>
+
+        <g transform="translate(222,86)">
+          <text x="76" y="0" class="lbl" text-anchor="middle">2 · PROJECT</text>
+          <line x1="16" y1="144" x2="150" y2="144" class="grid"/>
+          <line x1="46" y1="24" x2="46" y2="144" class="grid"/>
+          <circle cx="38" cy="84" r="2.4" class="fill"/><circle cx="52" cy="76" r="2.4" class="fill"/><circle cx="70" cy="70" r="2.4" class="fill"/>
+          <circle cx="88" cy="68" r="2.4" class="fill"/><circle cx="106" cy="72" r="2.4" class="fill"/><circle cx="124" cy="82" r="2.4" class="fill"/>
+          <circle cx="44" cy="108" r="2.4" class="fill"/><circle cx="64" cy="104" r="2.4" class="fill"/><circle cx="84" cy="102" r="2.4" class="fill"/>
+          <circle cx="104" cy="106" r="2.4" class="fill"/><circle cx="132" cy="42" r="2.4" fill="#c64545"/>
+          <text x="116" y="34" class="lbl-soft" style="fill:#c64545;">OUTLIER</text>
+          <text x="76" y="166" class="lbl-soft" text-anchor="middle">FOLIAGE POINTS IN R³</text>
+        </g>
+        <line x1="386" y1="170" x2="428" y2="170" class="stroke" marker-end="url(#f24-arr)"/>
+
+        <g transform="translate(436,86)">
+          <text x="80" y="0" class="lbl" text-anchor="middle">3 · RANSAC</text>
+          <polygon points="22,112 106,66 152,104 66,148" stroke="#2347d9" fill="#eef2ff" stroke-width="1.2" opacity="0.85"/>
+          <circle cx="50" cy="112" r="2.4" class="fill"/><circle cx="72" cy="100" r="2.4" class="fill"/><circle cx="94" cy="88" r="2.4" class="fill"/>
+          <circle cx="114" cy="94" r="2.4" class="fill"/><circle cx="88" cy="120" r="2.4" class="fill"/><circle cx="112" cy="126" r="2.4" class="fill"/>
+          <circle cx="132" cy="42" r="2.4" fill="#c64545" opacity="0.35"/>
+          <line x1="88" y1="108" x2="44" y2="60" stroke="#c64545" stroke-width="2" marker-end="url(#f24-arr)"/>
+          <text x="24" y="58" class="lbl" style="fill:#c64545;">n</text>
+          <text x="80" y="166" class="lbl-soft" text-anchor="middle">PLANE NORMAL = BEST YAW</text>
+        </g>
+        <line x1="604" y1="170" x2="646" y2="170" class="stroke" marker-end="url(#f24-arr)"/>
+
+        <g transform="translate(654,86)">
+          <text x="74" y="0" class="lbl" text-anchor="middle">4 · GOAL POSE</text>
+          <circle cx="74" cy="102" r="17" fill="#f6802b" stroke="#c75d18" stroke-width="1.3"/>
+          <line x1="74" y1="102" x2="30" y2="54" stroke="#c64545" stroke-width="2" marker-end="url(#f24-arr)"/>
+          <text x="22" y="50" class="lbl" style="fill:#c64545;">R_YAW</text>
+          <text x="74" y="166" class="lbl-soft" text-anchor="middle">ḡ = (R_YAW, p_ORANGE)</text>
+        </g>
+
+        <text x="24" y="334" class="lbl-soft">FIG. 2.4 · APPROACH-ANGLE ESTIMATION · §2.2.2</text>
+      </svg>
+      <figcaption>
+        <span class="figno">FIG. 2.4</span> The four-stage geometry that turns a binary mask into a goal pose. RANSAC is the right tool here because the projected foliage points are noisy (depth sensor errors, branches sticking out at odd angles) — a least-squares fit would be biased by the worst points. RANSAC discards them by definition.
+      </figcaption>
+    </figure>
+
+    <div class="callout warn">
+      <span class="tag">Failure mode</span>
+      <p>
+        <!-- Codex improvement: correct unsupported failure-count split and connect the failure to the actual filter. -->
+        The RANSAC fit oscillates when the foliage around the orange is sparse. There aren't enough inliers to constrain the plane, so the normal swings as the drone moves — the goal pose flickers, the trajectory replans on every swing, and the drone overshoots. The thesis reports 5 outright failures and names two failure families: lost view during the maneuver, and sparse-foliage plane instability. It does not split those 5 failures numerically.
+      </p>
+    </div>
+
+    <!-- Codex improvement: add the omitted alpha-decay smoothing mechanism from §2.3.2. -->
+    <h3>Alpha-decay smoothing</h3>
+
+    <p>
+      The patch for the flickering plane normal is to stop trusting each frame as a fresh truth. The system keeps a world-frame estimate of the orange pose, <span class="math-inline">g<sub>wo</sub></span>, by composing odometry with the observed relative pose: <span class="math-inline">g<sub>wo</sub> = g<sub>wq</sub> g<sub>qo</sub></span>. Since the orange is static, new observations should refine the same fixed world pose, not yank it around frame by frame.
+    </p>
+
+    <figure>
+      <svg class="diag" viewBox="0 0 840 320" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="f24b-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 Z" class="fill"/>
+          </marker>
+        </defs>
+        <text x="24" y="28" class="lbl-big">ALPHA-DECAY GOAL-POSE FILTER</text>
+        <text x="24" y="44" class="lbl-soft">WORLD-FRAME ESTIMATE TURNS NOISY RELATIVE OBSERVATIONS INTO A STABLE TARGET</text>
+        <line x1="24" y1="58" x2="816" y2="58" class="stroke-soft"/>
+
+        <g transform="translate(42,88)">
+          <rect x="0" y="0" width="170" height="74" class="stroke fill-soft" rx="3"/>
+          <text x="85" y="24" class="lbl" text-anchor="middle">OBSERVED RELATIVE POSE</text>
+          <text x="85" y="44" class="lbl-soft" text-anchor="middle">g_qo FROM MASK + RANSAC</text>
+          <text x="85" y="60" class="lbl-soft" text-anchor="middle">NOISY WHEN FOLIAGE IS SPARSE</text>
+        </g>
+        <g transform="translate(42,184)">
+          <rect x="0" y="0" width="170" height="58" class="stroke fill-soft" rx="3"/>
+          <text x="85" y="24" class="lbl" text-anchor="middle">ODOMETRY</text>
+          <text x="85" y="44" class="lbl-soft" text-anchor="middle">g_wq FROM OPTITRACK</text>
+        </g>
+        <line x1="214" y1="125" x2="284" y2="156" class="stroke" marker-end="url(#f24b-arr)"/>
+        <line x1="214" y1="213" x2="284" y2="178" class="stroke" marker-end="url(#f24b-arr)"/>
+
+        <g transform="translate(288,110)">
+          <rect x="0" y="0" width="176" height="90" stroke="#2347d9" fill="#fffdf6" stroke-width="1.4" rx="3"/>
+          <text x="88" y="24" class="lbl-big" text-anchor="middle">COMPOSE</text>
+          <text x="88" y="46" class="body" text-anchor="middle">g_wo^obs = g_wq g_qo^obs</text>
+          <text x="88" y="68" class="lbl-soft" text-anchor="middle">ORANGE SHOULD BE STATIC</text>
+        </g>
+        <line x1="466" y1="155" x2="536" y2="155" class="stroke" marker-end="url(#f24b-arr)"/>
+
+        <g transform="translate(540,86)">
+          <rect x="0" y="0" width="254" height="138" stroke="#2347d9" fill="#eef2ff" stroke-width="1.4" rx="3"/>
+          <text x="127" y="24" class="lbl-big" text-anchor="middle">UPDATE ESTIMATE</text>
+          <text x="18" y="52" class="body">p_est ← p_est + α(p_obs − p_est)</text>
+          <text x="18" y="78" class="body">R_est ← slerp(R_obs R_est⁻¹, α) R_est</text>
+          <line x1="18" y1="98" x2="236" y2="98" class="stroke-soft"/>
+          <text x="18" y="120" class="lbl-soft">α DECAYS TOWARD α_MIN OVER MAX STEPS</text>
+        </g>
+
+        <path d="M 666 226 C 666 276 188 276 188 230" class="dashed" marker-end="url(#f24b-arr)"/>
+        <text x="426" y="266" class="lbl-soft" text-anchor="middle">EARLY FRAMES MOVE THE ESTIMATE; LATER FRAMES ONLY NUDGE IT</text>
+        <text x="24" y="300" class="lbl-soft">FIG. 2.4B · ALPHA-DECAY SMOOTHING · §2.3.2</text>
+      </svg>
+      <figcaption>
+        <span class="figno">FIG. 2.4B</span> Alpha-decay is an exponential moving average over pose, with slerp for rotation. It smooths the RANSAC normal once the orange has been seen. It still cannot solve the harder Chapter 3 case where the orange is never visible at the start.
+      </figcaption>
+    </figure>
+
+
+    <!-- ============ §2.5 PICK MANEUVER ============ -->
+    <h2 id="pick"><span class="num">§2.5</span>The two-step pick</h2>
+
+    <p>
+      One last engineering wrinkle: the gripper is bolted to the bottom of the drone. If the drone flies <em>directly</em> at the orange, the gripper occludes the camera before the magnet engages — and the moment the camera loses sight of the orange, the whole loop falls apart.
+    </p>
+
+    <p>
+      The thesis solves this with a two-step approach: first move <strong>below</strong> the orange (gripper out of view), then move <strong>up and forward</strong> to engage the magnet.
+    </p>
+
+    <p>
+      <!-- Codex improvement: add the reset protocol that makes the two-step maneuver robust. -->
+      If the orange leaves view during either step, the drone returns to the last known good state where the mask was visible. If that reset fails more than two times, the run is counted as a failure. That reset rule is why the thesis separates clean successes from "success with reset" in Table 2.1.
+    </p>
+
+    <figure>
+      <svg class="diag" viewBox="0 0 920 420" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <marker id="f25-arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+            <path d="M 0 0 L 10 5 L 0 10 Z" class="fill"/>
+          </marker>
+          <symbol id="f25-drone" viewBox="0 0 184 162">
+            <path d="M 42 48 L 86 26 L 136 50 L 92 76 Z" stroke="#2347d9" fill="#eef2ff" stroke-width="1.4"/>
+            <path d="M 92 76 L 136 50 L 136 68 L 92 94 Z" stroke="#2347d9" fill="#dfe7ff" stroke-width="1.2"/>
+            <path d="M 42 48 L 92 76 L 92 94 L 42 66 Z" stroke="#2347d9" fill="#eef2ff" stroke-width="1.2"/>
+            <line x1="82" y1="48" x2="24" y2="26" stroke="#2347d9" stroke-width="1.8"/>
+            <line x1="98" y1="50" x2="158" y2="28" stroke="#2347d9" stroke-width="1.8"/>
+            <line x1="82" y1="66" x2="22" y2="92" stroke="#2347d9" stroke-width="1.8"/>
+            <line x1="104" y1="68" x2="166" y2="96" stroke="#2347d9" stroke-width="1.8"/>
+            <ellipse cx="22" cy="24" rx="24" ry="7" stroke="#2347d9" fill="#eef2ff" stroke-width="1.2"/>
+            <ellipse cx="160" cy="26" rx="24" ry="7" stroke="#2347d9" fill="#eef2ff" stroke-width="1.2"/>
+            <ellipse cx="18" cy="94" rx="24" ry="7" stroke="#2347d9" fill="#eef2ff" stroke-width="1.2"/>
+            <ellipse cx="170" cy="100" rx="24" ry="7" stroke="#2347d9" fill="#eef2ff" stroke-width="1.2"/>
+            <circle cx="22" cy="24" r="4" fill="#2347d9"/>
+            <circle cx="160" cy="26" r="4" fill="#2347d9"/>
+            <circle cx="18" cy="94" r="4" fill="#2347d9"/>
+            <circle cx="170" cy="100" r="4" fill="#2347d9"/>
+            <path d="M 118 62 L 146 52 L 164 60 L 136 72 Z" stroke="#2347d9" fill="#fffdf6" stroke-width="1.2"/>
+            <path d="M 136 72 L 164 60 L 164 82 L 136 94 Z" stroke="#2347d9" fill="#dfe7ff" stroke-width="1.2"/>
+            <circle cx="154" cy="74" r="4" fill="#2347d9"/>
+            <path d="M 84 92 L 94 96 L 94 132 L 84 128 Z" stroke="#2347d9" fill="#eef2ff" stroke-width="1.8"/>
+            <path d="M 66 134 L 86 128 L 86 150 L 66 156 Z" stroke="#2347d9" fill="#eef2ff" stroke-width="1.2"/>
+            <path d="M 96 128 L 116 134 L 116 156 L 96 150 Z" stroke="#2347d9" fill="#eef2ff" stroke-width="1.2"/>
+            <rect x="86" y="148" width="14" height="7" stroke="#c64545" fill="#fffdf6" stroke-width="1"/>
+          </symbol>
+        </defs>
+
+        <text x="24" y="28" class="lbl-big">TWO-STEP ORANGE PICKING MANEUVER</text>
+        <text x="24" y="44" class="lbl-soft">GO BELOW FIRST SO THE MAGNETIC GRIPPER STAYS OUT OF THE CAMERA FRUSTUM</text>
+        <line x1="24" y1="58" x2="896" y2="58" class="stroke-soft"/>
+        <line x1="28" y1="360" x2="892" y2="360" class="dashed"/>
+        <text x="32" y="378" class="lbl-soft">GROUND REFERENCE</text>
+
+        <!-- artificial tree, drawn as structure instead of a cloud -->
+        <g transform="translate(676,58)">
+          <path d="M 118 292 C 126 240 126 180 116 124 L 142 124 C 134 178 138 240 152 292 Z" class="stroke" fill="#fffdf6" stroke-width="1.4"/>
+          <path d="M 128 170 C 94 160 68 140 46 112" class="stroke-2"/>
+          <path d="M 130 154 C 162 136 184 114 202 82" class="stroke-2"/>
+          <path d="M 132 206 C 98 206 70 194 42 170" class="stroke"/>
+          <path d="M 136 196 C 168 188 194 174 214 150" class="stroke"/>
+          <path d="M 122 132 C 112 104 106 80 104 50" class="stroke"/>
+          <ellipse cx="86" cy="82" rx="38" ry="26" class="stroke fill-green" opacity="0.18"/>
+          <ellipse cx="142" cy="68" rx="44" ry="30" class="stroke fill-green" opacity="0.2"/>
+          <ellipse cx="188" cy="100" rx="36" ry="28" class="stroke fill-green" opacity="0.18"/>
+          <ellipse cx="62" cy="140" rx="42" ry="30" class="stroke fill-green" opacity="0.2"/>
+          <ellipse cx="124" cy="132" rx="48" ry="32" class="stroke fill-green" opacity="0.18"/>
+          <ellipse cx="188" cy="158" rx="46" ry="30" class="stroke fill-green" opacity="0.2"/>
+          <ellipse cx="88" cy="198" rx="44" ry="30" class="stroke fill-green" opacity="0.18"/>
+          <ellipse cx="152" cy="208" rx="40" ry="28" class="stroke fill-green" opacity="0.2"/>
+          <path d="M 58 140 C 78 126 98 126 120 138" class="stroke-soft" opacity="0.55"/>
+          <path d="M 100 82 C 120 70 142 72 166 86" class="stroke-soft" opacity="0.55"/>
+          <path d="M 150 158 C 168 144 190 146 208 160" class="stroke-soft" opacity="0.55"/>
+          <circle cx="46" cy="180" r="18" fill="#f6802b" stroke="#c75d18" stroke-width="1.4"/>
+          <path d="M 45 162 C 49 152 58 151 66 158" stroke="#2f8f5b" fill="none" stroke-width="1.2"/>
+          <rect x="36" y="158" width="20" height="7" stroke="#c64545" fill="#fffdf6" stroke-width="1"/>
+        </g>
+
+        <line x1="722" y1="238" x2="808" y2="238" class="lead"/>
+        <text x="814" y="234" class="lbl">MAGNET ORANGE</text>
+        <text x="814" y="248" class="lbl-soft">TARGET STAYS</text>
+        <text x="814" y="262" class="lbl-soft">IN VIEW</text>
+
+        <!-- camera frustum and bad straight-in cue -->
+        <polygon points="506,264 718,224 728,254" fill="#5b7cf5" opacity="0.08" stroke="#5b7cf5" stroke-width="0.9" stroke-dasharray="3 3"/>
+        <line x1="506" y1="264" x2="722" y2="238" stroke="#5b7cf5" stroke-width="0.8" stroke-dasharray="3 3"/>
+        <text x="590" y="270" class="lbl-soft" style="fill:#5b7cf5;" text-anchor="middle">CAMERA VIEW-CONE</text>
+        <path d="M 230 200 C 380 146 564 142 702 224" stroke="#c64545" fill="none" stroke-width="1" stroke-dasharray="3 3"/>
+        <text x="360" y="96" class="lbl" style="fill:#c64545;">STRAIGHT-IN PATH RISKS SELF-OCCLUSION</text>
+        <line x1="430" y1="102" x2="510" y2="154" class="lead"/>
+
+        <!-- three drone poses -->
+        <use href="#f25-drone" x="78" y="146" width="150" height="132" fill="#eef2ff" stroke="#2347d9"/>
+        <text x="162" y="322" class="lbl" text-anchor="middle">1 · START</text>
+        <text x="162" y="336" class="lbl-soft" text-anchor="middle">ORANGE VISIBLE</text>
+
+        <use href="#f25-drone" x="370" y="210" width="150" height="132" fill="#eef2ff" stroke="#2347d9"/>
+        <text x="452" y="382" class="lbl" text-anchor="middle">2 · BELOW</text>
+        <text x="452" y="396" class="lbl-soft" text-anchor="middle">GRIPPER BELOW FRUSTUM</text>
+
+        <use href="#f25-drone" x="612" y="116" width="140" height="124" fill="#eef2ff" stroke="#2347d9"/>
+        <text x="684" y="282" class="lbl" text-anchor="middle">3 · ENGAGE</text>
+        <text x="684" y="296" class="lbl-soft" text-anchor="middle">UP + FORWARD</text>
+
+        <path d="M 222 214 C 302 292 388 296 454 270" stroke="#2347d9" fill="none" stroke-width="1.6" stroke-dasharray="4 3" marker-end="url(#f25-arr)"/>
+        <text x="330" y="318" class="lbl-soft" style="fill:#5b7cf5;" text-anchor="middle">A · DROP UNDER THE FRUIT</text>
+        <path d="M 512 260 C 568 192 626 154 682 142" stroke="#2347d9" fill="none" stroke-width="1.6" stroke-dasharray="4 3" marker-end="url(#f25-arr)"/>
+        <text x="586" y="178" class="lbl-soft" style="fill:#5b7cf5;" text-anchor="middle">B · RISE INTO MAGNET CONTACT</text>
+
+        <text x="24" y="400" class="lbl-soft">FIG. 2.5 · TWO-STEP MANEUVER · §2.3.2</text>
+      </svg>
+      <figcaption>
+        <span class="figno">FIG. 2.5</span> The drone first goes <em>under</em> the orange so the gripper falls below the camera's field of view. Then it rises and presses forward — the orange stays in frame the whole time, so the perception loop never breaks.
+      </figcaption>
+    </figure>
+
+
+    <!-- ============ §2.6 RESULTS ============ -->
+    <h2 id="results"><span class="num">§2.6</span>102 runs</h2>
+
+    <p>
+      The system was tested on 102 runs against the artificial tree, with the orange repositioned between trials so the relative approach yaw varied across the full ±75° range.
+    </p>
+
+    <figure>
+      <svg class="diag" viewBox="0 0 840 220" xmlns="http://www.w3.org/2000/svg">
+        <text x="24" y="30" class="lbl-big">VISUAL-SERVOING RESULTS · 102 REAL TRIALS</text>
+        <line x1="24" y1="44" x2="816" y2="44" class="stroke-soft"/>
+        <g transform="translate(44,72)">
+          <line x1="150" y1="0" x2="720" y2="0" class="grid"/>
+          <line x1="150" y1="40" x2="720" y2="40" class="grid"/>
+          <line x1="150" y1="80" x2="720" y2="80" class="grid"/>
+          <!-- Codex improvement: label clean and reset-assisted successes separately. -->
+          <text x="0" y="15" class="lbl">CLEAN SUCCESS</text>
+          <rect x="150" y="0" width="470" height="24" fill="#2f8f5b"/>
+          <text x="632" y="16" class="lbl">84 / 102 · 82.4%</text>
+          <text x="0" y="55" class="lbl">WITH RESET</text>
+          <rect x="150" y="40" width="73" height="24" fill="#5b7cf5"/>
+          <text x="236" y="56" class="lbl-soft">13 / 102 · 12.7%</text>
+          <text x="0" y="95" class="lbl">FAILURE</text>
+          <rect x="150" y="80" width="28" height="24" fill="#c64545"/>
+          <text x="190" y="96" class="lbl-soft">5 / 102 · SPARSE FOLIAGE OR LOST VIEW</text>
+        </g>
+        <text x="24" y="202" class="lbl-soft">FIG. 2.6 · RESULTS · TABLE 2.1</text>
+      </svg>
+      <figcaption>
+        <span class="figno">FIG. 2.6</span> The decoupled pipeline is <em>extremely</em> reliable when the goal is in view: 84 clean picks, 13 more after a reset to the last-good state, and 5 failures. The thesis attributes the failures to lost view/reset breakdowns and sparse-foliage plane instability, without giving a count for each bucket.
+      </figcaption>
+    </figure>
+
+    <p>
+      But the headline number hides the real limitation. <strong>Every test started with the orange visible.</strong> The whole pipeline is built on the assumption that the segmentation network has something to segment. The moment the orange is occluded by a leaf at t₀, this system has no recourse — there's nothing to project to 3D, nothing to plan towards. Chapter 3 is the response to exactly that problem.
+    </p>
+
+
+    <div class="pagenav">
+      <a href="chapter-1.html">← Previous<span class="nm">1 · The problem</span></a>
+      <a href="chapter-3.html">Next →<span class="nm">3 · Learning to plan</span></a>
+    </div>
+
+  </article>
+
+  <div class="margin-tag">
+    <span class="top">PERCEPTION-BASED UAV PATH PLANNING</span>
+    <span class="mid">CHAPTER 2 · DECOUPLED PIPELINE</span>
+    <span class="bot">FIG. 2.1 — 2.6</span>
+  </div>
+
+</main>
+
+</body>
+</html>
